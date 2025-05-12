@@ -1,0 +1,19 @@
+{
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "weather-api-key",
+      "description": "Weather API Key",
+      "password": true
+    }
+  ],
+  "servers": {
+    "weather-sse": {
+      "type": "sse",
+      "url": "http://127.0.0.1:8000/sse",
+      "headers": {
+        "x-api-key": "${input:weather-api-key}"
+      }
+    }
+  }
+}
