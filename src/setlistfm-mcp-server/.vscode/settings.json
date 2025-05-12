@@ -1,0 +1,12 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/src/setlistfm-mcp-server/.venv/bin/python",
+  "files.autoSave": "onFocusChange",
+  "python.analysis.autoFormatStrings": true,
+  "[python]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "git.enableSmartCommit": true,
+  "chat.mcp.discovery.enabled": true,
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode"
+}

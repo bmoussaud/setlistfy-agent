@@ -1,19 +1,27 @@
 {
-  "inputs": [
-    {
-      "type": "promptString",
-      "id": "weather-api-key",
-      "description": "Weather API Key",
-      "password": true
-    }
-  ],
   "servers": {
-    "weather-sse": {
+    /* "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/"
+    }, */
+    "setlistfm": {
       "type": "sse",
-      "url": "http://127.0.0.1:8000/sse",
-      "headers": {
-        "x-api-key": "${input:weather-api-key}"
-      }
+      "url": "https://setlistfm-mcp.agreeablesea-975c6890.francecentral.azurecontainerapps.io/sse"
+      //"url_local": "http://localhost:9000/sse"
+    },
+    "spotify": {
+      "type": "sse",
+      //"url": "https://spotify-mcp.agreeablesea-975c6890.francecentral.azurecontainerapps.io/sse",
+      "url": "http://127.0.0.1:9001/sse"
     }
+    /*
+    "spotify2": {
+      "type": "sse",
+      "url": "https://spotify.server.open-mcp.org/latest/mcp"
+    },
+    "my_github": {
+      "type": "sse",
+      "url": "http://localhost:8000/sse"
+    }*/
   }
 }

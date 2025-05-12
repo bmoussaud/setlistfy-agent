@@ -1,0 +1,3 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/src/weather-mcp-server/.venv/bin/python"
+}

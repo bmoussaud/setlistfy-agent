@@ -1,0 +1,79 @@
+[project]
+# Chainlit configuration for Enhanced Setlist Agent with Spotify OAuth
+# Whether to enable telemetry (default: true). No personal data is collected.
+enable_telemetry = false
+
+[UI]
+# The name of the app and chatbot
+name = "Enhanced Setlist Agent"
+
+# Description
+show_readme_as_default = true
+
+# Collapse the chain of thought details in the UI
+default_collapse_content = true
+
+# Hide the chain of thought details from the user in the UI
+hide_cot = false
+
+# Link to your github repo. This will add a github button in the UI's header.
+github = "https://github.com/bmoussaud/MySetlistAgent"
+
+# Override default MUI light theme. (Check theme.py)
+[UI.theme]
+primary_color = "#1DB954"  # Spotify green
+background_color = "#191414"  # Spotify dark
+text_color = "#FFFFFF"
+
+[UI.theme.layout]
+width = "wide"
+
+[meta]
+generated_by = "1.0.0"
+
+[features]
+# Process and display mathematical expressions
+latex = false
+
+# Process and display mathematical expressions
+unsafe_allow_html = false
+
+# Process and display mathematical expressions  
+multi_modal = true
+
+# Authorize users to upload files
+[features.spontaneous_file_upload]
+enabled = true
+accept = ["text/plain", "application/json", ".txt", ".json", ".md"]
+max_files = 5
+max_size_mb = 10
+
+[oauth]
+# OAuth providers configuration
+[oauth.spotify]
+id = "spotify"
+name = "Spotify"
+client_id = "${SPOTIPY_CLIENT_ID}"
+client_secret = "${SPOTIPY_CLIENT_SECRET}"  
+authorize_url = "https://accounts.spotify.com/authorize"
+token_url = "https://accounts.spotify.com/api/token"
+
+# Spotify OAuth scopes
+scope = [
+    "user-library-read",
+    "user-read-playback-state", 
+    "user-modify-playback-state",
+    "user-read-currently-playing",
+    "playlist-read-private",
+    "playlist-modify-private", 
+    "playlist-modify-public",
+    "playlist-read-collaborative",
+    "user-read-recently-played",
+    "user-top-read",
+    "user-read-email",
+    "user-read-private"
+]
+
+[oauth.spotify.userinfo]
+url = "https://api.spotify.com/v1/me"
+to_user_metadata = ["display_name", "email", "country", "product"]

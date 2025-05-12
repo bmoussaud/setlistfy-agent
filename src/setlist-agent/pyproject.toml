@@ -1,0 +1,31 @@
+[project]
+name = "setlist-agent"
+version = "0.1.0"
+description = "Semantic Kernel ACA microservice for setlist and spotify MCP orchestration."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "httpx",
+    "semantic-kernel",
+    "semantic-kernel[mcp]",
+    "semantic-kernel[azure]",
+    "uvicorn",
+    "azure-monitor-opentelemetry",
+    "azure-ai-projects==1.0.0b12",
+    "azure-ai-inference",
+    "azure-ai-agents==1.0.1",
+    "aiohttp",
+    "azure-identity",
+    "opentelemetry-sdk",
+    "opentelemetry-instrumentation-requests",
+    "opentelemetry-instrumentation-fastapi",
+    "opentelemetry-instrumentation-httpx",
+    "opentelemetry-instrumentation-openai",
+    "opentelemetry-instrumentation-asyncio",
+    "azure-core-tracing-opentelemetry",
+    "chainlit",
+    "spotipy",
+    "python-dotenv",
+    "azure-monitor-opentelemetry-exporter"
+]

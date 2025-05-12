@@ -1,0 +1,32 @@
+# Enhanced Setlist Agent Requirements
+# Core framework dependencies
+fastapi
+uvicorn[standard]
+chainlit>=1.0.0
+
+# HTTP client for OAuth and API calls  
+httpx
+aiohttp
+
+# Semantic Kernel for AI orchestration
+semantic-kernel
+semantic-kernel[mcp]
+semantic-kernel[azure]
+
+# Azure AI and monitoring
+azure-ai-projects
+azure-ai-inference
+azure-identity
+azure-monitor-opentelemetry
+
+# OpenTelemetry for observability
+opentelemetry-sdk
+opentelemetry-instrumentation-requests
+opentelemetry-instrumentation-fastapi
+opentelemetry-instrumentation-openai
+
+# Spotify integration
+spotipy
+
+# Environment and configuration
+python-dotenv
