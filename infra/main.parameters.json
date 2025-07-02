@@ -8,9 +8,6 @@
     "location": {
       "value": "${AZURE_LOCATION}"
     },
-    "aiFoundryLocation": {
-      "value": "southindia"
-    },
     "rootname": {
       "value": "setlistfyagent"
     },
