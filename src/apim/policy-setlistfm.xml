@@ -1,0 +1,19 @@
+<policies>
+    <inbound>
+        <base />
+        <cache-lookup vary-by-developer="false" vary-by-developer-groups="false" allow-private-response-caching="false" must-revalidate="false" downstream-caching-type="none" />
+        <set-header name="Authorization" exists-action="override">
+            <value>Bearer {{setlisfm-api-key}}</value>
+        </set-header>
+    </inbound>
+    <backend>
+        <base />
+    </backend>
+    <outbound>
+        <base />
+        <cache-store duration="600"  />
+    </outbound>
+    <on-error>
+        <base />
+    </on-error>
+</policies>
