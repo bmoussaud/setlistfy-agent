@@ -51,6 +51,15 @@ module logAnalyticsWorkspace 'modules/log-analytics-workspace.bicep' = {
   }
 }
 
+module eventHub 'modules/event-hub.bicep' = {
+  name: 'event-hub'
+  params: {
+    location: location
+    eventHubNamespaceName: '${rootname}-ehn-${uniqueString(resourceGroup().id)}'
+    eventHubName: '${rootname}-eh-${uniqueString(resourceGroup().id)}'
+  }
+}
+
 resource acr 'Microsoft.ContainerRegistry/registries@2023-01-01-preview' = {
   name: '${rootname}${uniqueString(resourceToken)}'
   location: location
@@ -653,6 +662,25 @@ resource connection 'Microsoft.CognitiveServices/accounts/connections@2025-04-01
       ResourceId: applicationInsights.outputs.aiId
     }
   }
+}
+
+module apiManagement 'modules/api-management.bicep' = {
+  name: 'api-management'
+  params: {
+    location: location
+    serviceName: '${rootname}-apim-${uniqueString(resourceGroup().id)}'
+    publisherName: 'Setlistfy Apps'
+    publisherEmail: '${rootname}@contososuites.com'
+    skuName: 'Basicv2'
+    skuCount: 1
+    aiName: applicationInsights.outputs.aiName
+    //eventHubNamespaceName: 'azure-rambi-ehn-${uniqueString(resourceGroup().id)}'
+    //eventHubName: 'azure-rambi-eh-${uniqueString(resourceGroup().id)}'
+  }
+  dependsOn: [
+    logAnalyticsWorkspace
+    eventHub
+  ]
 }
 
 output AZURE_CONTAINER_REGISTRY_ENDPOINT string = acr.properties.loginServer
