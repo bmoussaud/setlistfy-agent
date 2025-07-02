@@ -5,6 +5,7 @@ from azure.monitor.opentelemetry import configure_azure_monitor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.instrumentation.openai import OpenAIInstrumentor
+# from opentelemetry.instrumentation.asyncio import AsyncioInstrumentorc
 import os
 import asyncio
 import logging
@@ -19,10 +20,11 @@ from semantic_kernel.agents import ChatCompletionAgent, ChatHistoryAgentThread
 from semantic_kernel.connectors.ai.azure_ai_inference import AzureAIInferenceChatCompletion
 from semantic_kernel.connectors.mcp import MCPSsePlugin
 from semantic_kernel.functions import KernelArguments
+
 from config import enable_telemetry
 from spotify_auth import SpotifyAuthManager, spotify_auth
 import chainlit as cl
-
+from opentelemetry import trace
 
 # Configure logger for this module to ensure all messages are shown
 logger = logging.getLogger("setlist_agent.enhanced_agent")
@@ -68,14 +70,11 @@ class EnhancedSetlistAgent:
         )
         self._kernel.add_service(ai_inference_service)
 
-    def new_thread(self) -> ChatHistoryAgentThread:
-        """Create a new chat thread."""
-        # new_thread = ChatHistoryAgentThread()
-        # TODO investigage new_thread.create()
-        logger.info("Creating new chat history thread")
-        thread = ChatHistoryAgentThread(chat_history=ChatHistory())
-        logger.info(f"New thread created with ID: {thread.id}")
-        return thread
+    def span(self, name: str):
+        """Create a span for tracing."""
+        tracer = trace.get_tracer(__name__)
+        self._calls += 1
+        return tracer.start_as_current_span(name=f"{name} {self._thread.id} / {self._calls}")
 
     async def initialize_agent(self):
         """Initialize the agent with necessary plugins and services."""
@@ -89,10 +88,12 @@ class EnhancedSetlistAgent:
             kernel=self._kernel,
             name="enhanced_setlist_agent",
             function_choice_behavior=FunctionChoiceBehavior.Auto(),
-            instructions=self._get_agent_instructions()
-        )
+            instructions=self._get_agent_instructions())
 
+        self._thread = ChatHistoryAgentThread(chat_history=ChatHistory())
+        logger.info(f"New thread created with ID: {self._thread.id}")
         logger.info("Enhanced SetlistAgent initialized successfully.")
+        self._calls = 0
 
     async def _configure_telemetry(self):
 
@@ -120,8 +121,7 @@ class EnhancedSetlistAgent:
                     OpenAIInstrumentor().instrument()
                     RequestsInstrumentor().instrument()
                     HTTPXClientInstrumentor().instrument()
-                    from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
-                    AsyncioInstrumentor().instrument()
+                    # AsyncioInstrumentor().instrument()
                     logger.info(
                         "OpenTelemetry instrumentation configured for Setlist Agent")
                 except Exception as e:

@@ -1,11 +1,6 @@
-
-from azure.identity import DefaultAzureCredential
-from azure.ai.projects import AIProjectClient
 import logging
 from typing import Optional, Dict
-from opentelemetry import trace
 from enhanced_agent import EnhancedSetlistAgent
-from spotify_auth import spotify_auth
 import chainlit as cl
 from dotenv import load_dotenv
 import os
@@ -14,7 +9,6 @@ import os
 
 # Load environment variables
 load_dotenv()
-
 
 # Configure root logger for the application
 logger = logging.getLogger("setlist_agent")
@@ -42,6 +36,8 @@ async def on_chat_start():
         f"user.metadata.get('provider'): {user.metadata.get('provider') if user else 'None'}")
     agent = EnhancedSetlistAgent()
     await agent.initialize_agent()
+    # Initialize agent and create thread
+    cl.user_session.set("agent", agent)
 
     if user:
         # Store in user session for later use
@@ -86,12 +82,8 @@ async def on_chat_start():
         await cl.Message(
             content="🔒 Please log in to Spotify to use the Setlist Agent features.").send()
         # Redirect to Spotify authentication
-        await cl.redirect(spotify_auth.get_auth_url())
+        # await cl.redirect(spotify_auth.get_auth_url())
 
-    # Initialize agent and create thread
-    cl.user_session.set("agent", agent)
-    cl.user_session.set("thread", agent.new_thread())
-    cl.user_session.set("calls", 0)
     logger.info("Setlist Agent initialized and chat thread created.")
 
 
@@ -99,32 +91,15 @@ async def on_chat_start():
 async def on_message(message: cl.Message):
     """Handle incoming messages with enhanced features."""
 
-    tracer = trace.get_tracer(__name__)
     agent = cl.user_session.get("agent", None)
-    thread = cl.user_session.get("thread", None)
-
-    if thread is None:
-        logger.info("No thread found in user session, creating a new one.")
-        cl.user_session.set("thread", agent.new_thread())
-        thread = cl.user_session.get("thread", None)
-
-    calls = cl.user_session.get("calls", None)
-    if calls is None:
-        calls = 0
-        cl.user_session.set("calls", calls)
-
-    calls = calls + 1
-    cl.user_session.set("calls", calls)
-    span = f"setlistfy-agent-on_message {thread.id if thread else '0000'}/{calls}"
-    logger.info(f"Starting span: {span}")
-    with tracer.start_as_current_span(name=span):
+    with agent.span(name="setlistfy-agent-on_message"):
         logger.info(f"Received message: {message.content}")
-        logger.info(f"Current thread: {thread.id if thread else 'None'}")
+        logger.info(f"Current thread: {agent._thread.id}")
         try:
             # Show thinking message to user
             msg = await cl.Message("🤔 Thinking...", author="agent").send()
             # Process message through enhanced agent
-            response = await agent.chat(user_input=message.content, thread=thread)
+            response = await agent.chat(user_input=message.content, thread=agent._thread,)
             logger.info(f"Agent response: {response}")
             # Update message with response
             msg.content = response

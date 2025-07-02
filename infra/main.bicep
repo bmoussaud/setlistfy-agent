@@ -23,6 +23,8 @@ param spotifyClientSecret string
 @description('Indicates if the latest image for the Spotify MCP microservice exists in the ACR.')
 param isLatestImageExist bool = false
 
+var chainlitAuthSecret = 'u.tT0881gp@T9$mRHr4XWs/uk2R8mqI5dSo@R2AO_Rj63t5P$3T,x4aN,Shpo@~'
+
 // tags that should be applied to all resources.
 var tags = {
   // Tag all resources with the environment name.
@@ -464,7 +466,7 @@ resource setlistAgentpApp 'Microsoft.App/containerApps@2024-10-02-preview' = {
             }
             {
               name: 'CHAINLIT_AUTH_SECRET'
-              value: 'u.tT0882Fgp@T9$mRHr4XWs/uk2R8mqI5dSo@R2AO_Rj63t5P$3T,x4aN,Shpo@~'
+              value: chainlitAuthSecret
             }
             {
               name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
@@ -673,3 +675,4 @@ output PROJECT_ENDPOINT string = project.properties.endpoints['AI Foundry API']
 output AZURE_AI_INFERENCE_ENDPOINT string = '${aiFoundry.properties.endpoints['Azure AI Model Inference API']}/models'
 output AZURE_AI_INFERENCE_API_KEY string = listKeys(aiFoundry.id, '2025-04-01-preview').key1
 output APPLICATIONINSIGHTS_CONNECTION_STRING string = applicationInsights.outputs.connectionString
+output CHAINLIT_AUTH_SECRET string = chainlitAuthSecret
