@@ -683,6 +683,51 @@ module apiManagement 'modules/api-management.bicep' = {
   ]
 }
 
+module setlistfmapi 'modules/api.bicep' = {
+  name: 'setlistfm-api'
+  params: {
+    apimName: apiManagement.outputs.name
+    apiName: 'setlistfm'
+    apiPath: '/setlistfm'
+    openApiJson: 'https://raw.githubusercontent.com/bmoussaud/setlistfy-agent/refs/heads/main/src/apim/openapi-setlistfm.json'
+    openApiXml: 'https://raw.githubusercontent.com/bmoussaud/setlistfy-agent/refs/heads/main/src/apim/policy-setlistfm.xml'
+    serviceUrlPrimary: 'https://api.setlist.fm/rest'
+    aiLoggerName: apiManagement.outputs.aiLoggerName
+  }
+  dependsOn: [
+    secretSetlistFMApiKey
+    keyVaultSecretUserRoleAssignment
+  ]
+}
+
+module setlistFmNvApiKey 'modules/nvkv.bicep' = {
+  name: 'setlisfm-api-key'
+  params: {
+    apimName: apiManagement.outputs.name
+    keyName: 'setlisfm-api-key'
+    keyVaultName: kv.name
+    secretName: secretSetlistFMApiKey.name
+  }
+  dependsOn: [
+    keyVaultSecretUserRoleAssignment //this role assignment is needed to allow the API Management service to access the Key Vault
+  ]
+}
+@description('This is the built-in Key Vault Secrets Officer role. See https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles/security#key-vault-secrets-user')
+resource keyVaultSecretsUserRoleDefinition 'Microsoft.Authorization/roleDefinitions@2018-01-01-preview' existing = {
+  scope: subscription()
+  name: '4633458b-17de-408a-b874-0445c86b69e6'
+}
+
+@description('Assigns the API Management service the role to browse and read the keys of the Key Vault to the APIM')
+resource keyVaultSecretUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
+  name: guid(kv.id, 'ApiManagement', keyVaultSecretsUserRoleDefinition.id)
+  scope: kv
+  properties: {
+    roleDefinitionId: keyVaultSecretsUserRoleDefinition.id
+    principalId: apiManagement.outputs.apiManagementIdentityPrincipalId
+  }
+}
+
 output AZURE_CONTAINER_REGISTRY_ENDPOINT string = acr.properties.loginServer
 output SPOTIFY_MCP_URL string = 'https://${spotifyMcpApp.properties.configuration.ingress.fqdn}/sse'
 output SETLISTFM_MCP_URL string = 'https://${setlistfmMcpApp.properties.configuration.ingress.fqdn}/sse'

@@ -120,4 +120,6 @@ output name string = apiManagementService.name
 output apiManagementProxyHostName string = apiManagementService.properties.hostnameConfigurations[0].hostName
 //output apiManagementDeveloperPortalHostName string = replace(apiManagementService.properties.developerPortalUrl, 'https://', '')
 output aiLoggerId string = aiLogger.id
+output aiLoggerName string = aiLogger.name
+output apimId string = apiManagementService.id
 output apiAdminSubscriptionKey string = allAPIsSubscription.listSecrets().primaryKey
