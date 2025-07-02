@@ -91,7 +91,8 @@ async def on_chat_start():
 async def on_message(message: cl.Message):
     """Handle incoming messages with enhanced features."""
 
-    agent = cl.user_session.get("agent", None)
+    agent: EnhancedSetlistAgent = cl.user_session.get(
+        "agent", None)  # type: ignore
     with agent.span(name="setlistfy-agent-on_message"):
         logger.info(f"Received message: {message.content}")
         logger.info(f"Current thread: {agent._thread.id}")

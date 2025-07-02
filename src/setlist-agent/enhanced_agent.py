@@ -64,7 +64,8 @@ class EnhancedSetlistAgent:
 
         # Add Azure AI Inference service
         ai_inference_service = AzureAIInferenceChatCompletion(
-            ai_model_id=os.getenv("AZURE_OPENAI_CHAT_DEPLOYMENT_NAME"),
+            ai_model_id=os.getenv(
+                "AZURE_OPENAI_CHAT_DEPLOYMENT_NAME"),  # type: ignore
             api_key=os.getenv("AZURE_AI_INFERENCE_API_KEY"),
             endpoint=os.getenv("AZURE_AI_INFERENCE_ENDPOINT"),
         )
@@ -143,7 +144,7 @@ class EnhancedSetlistAgent:
                 "SETLISTFM_MCP_URL must be set in environment variables.")
         try:
             self.plugin_setlistfm = MCPSsePlugin(
-                name="SetlistFM",
+                name="setlistfm_mcp_client",
                 description="Setlist FM Plugin for concert and setlist data",
                 url=setlistfm_mcp_url
             )
@@ -154,11 +155,15 @@ class EnhancedSetlistAgent:
             logger.error(f"Failed to connect Setlist FM plugin: {e}")
             raise RuntimeError(f"Failed to connect Setlist FM plugin: {e}")
 
-    async def _setup_spotify_plugin(self, access_token: str = None, refresh_token: str = None, expires_at: int = None):
+    async def _setup_spotify_plugin(self, access_token: str, refresh_token: str, expires_at: int):
         """Setup Spotify plugin with appropriate authentication."""
         logger.info("Setting up Spotify plugin with authentication...")
 
         spotify_mcp_url = os.getenv("SPOTIFY_MCP_URL")
+        if not spotify_mcp_url:
+            logger.error("SPOTIFY_MCP_URL environment variable is not set.")
+            raise ValueError(
+                "SPOTIFY_MCP_URL must be set in environment variables.")
         headers = {}
         headers["Authorization"] = f"Bearer {access_token}"
         headers["X-Spotify-Token"] = access_token
@@ -171,7 +176,7 @@ class EnhancedSetlistAgent:
             f"Connecting to Spotify MCP at {spotify_mcp_url} with headers: {headers}")
 
         self.plugin_spotify = MCPSsePlugin(
-            name="Spotify",
+            name="spotify_mcp_client",
             description="Spotify Plugin with OAuth support",
             url=spotify_mcp_url,
             headers=headers

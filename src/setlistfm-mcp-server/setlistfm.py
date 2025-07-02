@@ -1,5 +1,9 @@
+from functools import wraps
+import asyncio
+from opentelemetry import trace
 import logging
 import os
+import json
 import httpx
 from typing import Any, Optional
 from fastmcp import FastMCP
@@ -25,6 +29,46 @@ formatter = logging.Formatter(
     '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
+
+
+def my_span(name: str):
+    """
+    Decorator to create a span for OpenTelemetry tracing.
+    Works with both sync and async functions.
+    """
+    def decorator(func):
+        if asyncio.iscoroutinefunction(func):
+            @wraps(func)
+            async def async_wrapper(*args, **kwargs):
+                tracer = trace.get_tracer(__name__)
+                # Start a new span for the async function
+                with tracer.start_as_current_span(f"setlistfm_mcp_{name}") as span:
+                    try:
+                        result = await func(*args, **kwargs)
+                        span.set_status(trace.Status(trace.StatusCode.OK))
+                        return result
+                    except Exception as e:
+                        span.set_status(trace.Status(
+                            trace.StatusCode.ERROR, str(e)))
+                        span.record_exception(e)
+                        raise
+            return async_wrapper
+        else:
+            @wraps(func)
+            def sync_wrapper(*args, **kwargs):
+                tracer = trace.get_tracer(__name__)
+                with tracer.start_as_current_span(f"setlistfm_mcp_{name}") as span:
+                    try:
+                        result = func(*args, **kwargs)
+                        span.set_status(trace.Status(trace.StatusCode.OK))
+                        return result
+                    except Exception as e:
+                        span.set_status(trace.Status(
+                            trace.StatusCode.ERROR, str(e)))
+                        span.record_exception(e)
+                        raise
+            return sync_wrapper
+    return decorator
 
 
 def configure_telemetry():
@@ -104,7 +148,7 @@ def get_headers() -> dict[str, str]:
     }
 
 
-async def make_setlistfm_request(url: str, params: dict[str, Any] | None = None) -> dict[str, Any] | None:
+async def make_setlistfm_request(url: str, params: dict[str, str | int] | None = None) -> dict[str, Any] | None:
     """Make a request to the Setlist.fm API with error handling."""
     headers = get_headers()
     async with httpx.AsyncClient() as client:
@@ -118,7 +162,14 @@ async def make_setlistfm_request(url: str, params: dict[str, Any] | None = None)
 
 
 @mcp.tool()
-async def search_setlists(artist_mbid: Optional[str] = None, artist_name: Optional[str] = None, city_name: Optional[str] = None, country_code: Optional[str] = None, page: int = 1) -> str:
+@my_span("search_setlists")
+async def search_setlists(
+    artist_mbid: Optional[str] = None,
+    artist_name: Optional[str] = None,
+    city_name: Optional[str] = None,
+    country_code: Optional[str] = None,
+    page: int = 1
+) -> str:
     """Search for setlists by artist, city, or country.
 
     Args:
@@ -131,7 +182,8 @@ async def search_setlists(artist_mbid: Optional[str] = None, artist_name: Option
     Returns:
         A formatted string with setlist information or an error message.
     """
-    params = {"p": page}
+
+    params: dict[str, str | int] = {"p": page}
     if artist_name:
         params["artistName"] = artist_name
     if artist_mbid:
@@ -140,11 +192,16 @@ async def search_setlists(artist_mbid: Optional[str] = None, artist_name: Option
         params["cityName"] = city_name
     if country_code:
         params["countryCode"] = country_code
+
     logger.info(f"Searching setlists with params: {params}")
-    return await make_setlistfm_request(f"{SETLISTFM_API_BASE}/search/setlists", params=params)
+    current_span = trace.get_current_span()
+    current_span.set_attribute("setlist.params", json.dumps(params))
+    result = await make_setlistfm_request(f"{SETLISTFM_API_BASE}/search/setlists", params=params)
+    return json.dumps(result) if result is not None else json.dumps({"error": "No data found"})
 
 
 @mcp.tool()
+@my_span("get_setlist_by_id")
 async def get_setlist_by_id(setlist_id: str) -> str:
     """Get a setlist by its Setlist.fm ID.
 
@@ -152,10 +209,14 @@ async def get_setlist_by_id(setlist_id: str) -> str:
         setlist_id: The Setlist.fm setlist ID
     """
     logger.info(f"Fetching setlist by ID: {setlist_id}")
-    return await make_setlistfm_request(f"{SETLISTFM_API_BASE}/setlist/{setlist_id}")
+    current_span = trace.get_current_span()
+    current_span.set_attribute("setlist.id", setlist_id)
+    result = await make_setlistfm_request(f"{SETLISTFM_API_BASE}/setlist/{setlist_id}")
+    return json.dumps(result) if result is not None else json.dumps({"error": "No data found"})
 
 
 @mcp.tool()
+@my_span("get_artist_by_mbid")
 async def get_artist_by_mbid(mbid: str) -> str:
     """Get artist info by Musicbrainz ID (mbid).
 
@@ -163,10 +224,14 @@ async def get_artist_by_mbid(mbid: str) -> str:
         mbid: The Musicbrainz ID of the artist
     """
     logger.info(f"Fetching artist by MBID: {mbid}")
-    return await make_setlistfm_request(f"{SETLISTFM_API_BASE}/artist/{mbid}")
+    current_span = trace.get_current_span()
+    current_span.set_attribute("artist.mbid", mbid)
+    result = await make_setlistfm_request(f"{SETLISTFM_API_BASE}/artist/{mbid}")
+    return json.dumps(result) if result is not None else json.dumps({"error": "No data found"})
 
 
 @mcp.tool()
+@my_span("get_artist_setlists")
 async def get_artist_setlists(mbid: str, page: int = 1) -> str:
     """Get setlists for an artist by Musicbrainz ID (mbid).
 
@@ -175,10 +240,15 @@ async def get_artist_setlists(mbid: str, page: int = 1) -> str:
         page: Page number for pagination (default 1)
     """
     logger.info(f"Fetching setlists for artist MBID: {mbid}, page: {page}")
-    return await make_setlistfm_request(f"{SETLISTFM_API_BASE}/artist/{mbid}/setlists", params={"p": page})
+    current_span = trace.get_current_span()
+    current_span.set_attribute("artist.mbid", mbid)
+    current_span.set_attribute("setlist.page", page)
+    result = await make_setlistfm_request(f"{SETLISTFM_API_BASE}/artist/{mbid}/setlists", params={"p": page})
+    return json.dumps(result) if result is not None else json.dumps({"error": "No data found"})
 
 
 @mcp.tool()
+@my_span("get_venue_by_id")
 async def get_venue_by_id(venue_id: str) -> str:
     """Get venue info by venueId.
 
@@ -186,10 +256,14 @@ async def get_venue_by_id(venue_id: str) -> str:
         venue_id: The Setlist.fm venue ID
     """
     logger.info(f"Fetching venue by ID: {venue_id}")
-    return await make_setlistfm_request(f"{SETLISTFM_API_BASE}/venue/{venue_id}")
+    current_span = trace.get_current_span()
+    current_span.set_attribute("venue.id", venue_id)
+    result = await make_setlistfm_request(f"{SETLISTFM_API_BASE}/venue/{venue_id}")
+    return json.dumps(result) if result is not None else json.dumps({"error": "No data found"})
 
 
 @mcp.tool()
+@my_span("get_venue_setlists")
 async def get_venue_setlists(venue_id: str, page: int = 1) -> str:
     """Get setlists for a venue by venueId.
 
@@ -198,10 +272,14 @@ async def get_venue_setlists(venue_id: str, page: int = 1) -> str:
         page: Page number for pagination (default 1)
     """
     logger.info(f"Fetching setlists for venue ID: {venue_id}, page: {page}")
-    return await make_setlistfm_request(f"{SETLISTFM_API_BASE}/venue/{venue_id}/setlists", params={"p": page})
+    current_span = trace.get_current_span()
+    current_span.set_attribute("venue.id", venue_id)
+    result = await make_setlistfm_request(f"{SETLISTFM_API_BASE}/venue/{venue_id}/setlists", params={"p": page})
+    return json.dumps(result) if result is not None else json.dumps({"error": "No data found"})
 
 
 @mcp.tool()
+@my_span("search_venues")
 async def search_venues(
     name: Optional[str] = None,
     city_id: Optional[str] = None,
@@ -226,7 +304,7 @@ async def search_venues(
     Returns:
         A dictionary with the list of matching venues or None if an error occurs.
     """
-    params = {"p": page}
+    params = {}
     if name:
         params["name"] = name
     if city_id:
@@ -239,11 +317,15 @@ async def search_venues(
         params["stateCode"] = state_code
     if country:
         params["country"] = country
+    params["p"] = page
     logger.info(f"Searching venues with params: {params}")
+    current_span = trace.get_current_span()
+    current_span.set_attribute("venue.search_params", json.dumps(params))
     return await make_setlistfm_request(f"{SETLISTFM_API_BASE}/search/venues", params=params)
 
 
 @mcp.tool()
+@my_span("search_artists")
 async def search_artists(artist_name: str, sort: str = "relevance", page: int = 1) -> str:
     """Search for artists by name.
 
@@ -254,7 +336,15 @@ async def search_artists(artist_name: str, sort: str = "relevance", page: int = 
     """
     logger.info(
         f"Searching artists with params: {artist_name}, {sort}, {page}")
-    return await make_setlistfm_request(f"{SETLISTFM_API_BASE}/search/artists", params={"artistName": artist_name, "p": page, "sort": sort})
+    current_span = trace.get_current_span()
+    current_span.set_attribute("artist.name", artist_name)
+    current_span.set_attribute("artist.sort", sort)
+    current_span.set_attribute("artist.page", page)
+    result = await make_setlistfm_request(
+        f"{SETLISTFM_API_BASE}/search/artists",
+        params={"artistName": artist_name, "p": page, "sort": sort}
+    )
+    return json.dumps(result) if result is not None else json.dumps({"error": "No data found"})
 
 
 if __name__ == "__main__":

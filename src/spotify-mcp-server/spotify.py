@@ -1,8 +1,8 @@
+from functools import wraps
+import asyncio
 from opentelemetry import trace
 import json
-from urllib import response
 from fastmcp import FastMCP
-from dotenv import load_dotenv
 import os
 import json
 
@@ -11,25 +11,55 @@ import logging
 
 from starlette.requests import Request
 from starlette.responses import JSONResponse
-import httpx
-from fastmcp.server.dependencies import get_access_token, AccessToken
-from fastmcp.server.auth import BearerAuthProvider
-from fastmcp.server.auth.auth import (
-    ClientRegistrationOptions,
-    OAuthProvider,
-    RevocationOptions,
-)
+
 from fastmcp import FastMCP, Context
 from fastmcp.server.dependencies import get_http_request
 from fastmcp.server.middleware import Middleware, MiddlewareContext
 
 # Application Insights configuration
 from azure.monitor.opentelemetry import configure_azure_monitor
-
-
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
-from opentelemetry.instrumentation.starlette import StarletteInstrumentor
+
+
+def my_span(name: str):
+    """
+    Decorator to create a span for OpenTelemetry tracing.
+    Works with both sync and async functions.
+    """
+    def decorator(func):
+        if asyncio.iscoroutinefunction(func):
+            @wraps(func)
+            async def async_wrapper(*args, **kwargs):
+                tracer = trace.get_tracer(__name__)
+                # Start a new span for the async function
+                with tracer.start_as_current_span(name) as span:
+                    try:
+                        result = await func(*args, **kwargs)
+                        span.set_status(trace.Status(trace.StatusCode.OK))
+                        return result
+                    except Exception as e:
+                        span.set_status(trace.Status(
+                            trace.StatusCode.ERROR, str(e)))
+                        span.record_exception(e)
+                        raise
+            return async_wrapper
+        else:
+            @wraps(func)
+            def sync_wrapper(*args, **kwargs):
+                tracer = trace.get_tracer(__name__)
+                with tracer.start_as_current_span(name) as span:
+                    try:
+                        result = func(*args, **kwargs)
+                        span.set_status(trace.Status(trace.StatusCode.OK))
+                        return result
+                    except Exception as e:
+                        span.set_status(trace.Status(
+                            trace.StatusCode.ERROR, str(e)))
+                        span.record_exception(e)
+                        raise
+            return sync_wrapper
+    return decorator
 
 
 def configure_telemetry(mcp: FastMCP):
@@ -149,6 +179,7 @@ configure_telemetry(mcp)
 
 # --- Playlist Lifecycle MCP Tools ---
 @mcp.tool()
+@my_span("spotify_mcp_create_playlist")
 async def spotify_create_playlist(name: str, public: bool = True, description: str = "") -> str:
     """
     Create a new playlist for the current user.
@@ -160,8 +191,14 @@ async def spotify_create_playlist(name: str, public: bool = True, description: s
         str: The created playlist object as JSON, or an error message.
     """
     logger.info(f"Creating playlist: {name} (public={public})")
+    current_span = trace.get_current_span()
+    current_span.set_attribute("playlist.name", name)
+    current_span.set_attribute("playlist.public", public)
     try:
         user = spotipy_instance().me()
+        if not user or "id" not in user:
+            logger.error("User not authenticated or user ID not found.")
+            return "Error: User not authenticated or user ID not found."
         playlist = spotipy_instance().user_playlist_create(
             user["id"], name, public=public, description=description)
         response = json.dumps(playlist, indent=2)
@@ -173,6 +210,7 @@ async def spotify_create_playlist(name: str, public: bool = True, description: s
 
 
 @mcp.tool()
+@my_span("spotify_mcp_add_track_to_playlist")
 async def spotify_add_track_to_playlist(playlist_id: str, track_uri: str) -> str:
     """
     Add a track to a playlist.
@@ -183,6 +221,9 @@ async def spotify_add_track_to_playlist(playlist_id: str, track_uri: str) -> str
         str: Result message or error.
     """
     logger.info(f"Adding track {track_uri} to playlist {playlist_id}")
+    current_span = trace.get_current_span()
+    current_span.set_attribute("playlist.id", playlist_id)
+    current_span.set_attribute("track.uri", track_uri)
     try:
         result = spotipy_instance().playlist_add_items(
             playlist_id, [track_uri])
@@ -195,6 +236,7 @@ async def spotify_add_track_to_playlist(playlist_id: str, track_uri: str) -> str
 
 
 @mcp.tool()
+@my_span("spotify_mcp_remove_track_from_playlist")
 async def spotify_remove_track_from_playlist(playlist_id: str, track_uri: str) -> str:
     """
     Remove a track from a playlist.
@@ -205,6 +247,9 @@ async def spotify_remove_track_from_playlist(playlist_id: str, track_uri: str) -
         str: Result message or error.
     """
     logger.info(f"Removing track {track_uri} from playlist {playlist_id}")
+    current_span = trace.get_current_span()
+    current_span.set_attribute("playlist.id", playlist_id)
+    current_span.set_attribute("track.uri", track_uri)
     try:
         result = spotipy_instance().playlist_remove_all_occurrences_of_items(
             playlist_id, [track_uri])
@@ -217,6 +262,7 @@ async def spotify_remove_track_from_playlist(playlist_id: str, track_uri: str) -
 
 
 @mcp.tool()
+@my_span("spotify_mcp_delete_playlist")
 async def spotify_delete_playlist(playlist_id: str) -> str:
     """
     Unfollow (delete) a playlist for the current user.
@@ -226,6 +272,8 @@ async def spotify_delete_playlist(playlist_id: str) -> str:
         str: Result message or error.
     """
     logger.info(f"Deleting (unfollowing) playlist {playlist_id}")
+    current_span = trace.get_current_span()
+    current_span.set_attribute("playlist.id", playlist_id)
     try:
         result = spotipy_instance().current_user_unfollow_playlist(playlist_id)
         return json.dumps({"message": "Playlist deleted (unfollowed)", "result": result}, indent=2)
@@ -235,6 +283,7 @@ async def spotify_delete_playlist(playlist_id: str) -> str:
 
 
 @mcp.tool()
+@my_span("spotify_mcp_get_playlist")
 async def spotify_get_playlist(playlist_id: str) -> str:
     """
     Get details about a specific playlist.
@@ -244,8 +293,12 @@ async def spotify_get_playlist(playlist_id: str) -> str:
         str: The playlist details as JSON, or an error message.
     """
     logger.info(f"Getting playlist details for {playlist_id}")
+    current_span = trace.get_current_span()
+    current_span.set_attribute("playlist.id", playlist_id)
     try:
         playlist = spotipy_instance().playlist(playlist_id)
+        if not playlist:
+            return f"Playlist with ID {playlist_id} not found."
         # Remove 'available_markets' fields from playlist and tracks to reduce payload size
         if 'tracks' in playlist and 'items' in playlist['tracks']:
             for item in playlist['tracks']['items']:
@@ -281,6 +334,7 @@ async def readiness(request: Request) -> JSONResponse:
 
 
 @mcp.tool()
+@my_span("spotify_mcp_search_track")
 def spotify_search_track(artist: str, track: str) -> str:
     """
     Search for a track on Spotify by artist and track name.
@@ -296,19 +350,27 @@ def spotify_search_track(artist: str, track: str) -> str:
     """
     query = f"{artist} {track}"
     logger.info(f"Searching for track: {query}")
+    current_span = trace.get_current_span()
+    current_span.set_attribute("track.artist", artist)
+    current_span.set_attribute("track.name", track)
+    current_span.set_attribute("track.query", query)
     try:
         results = spotipy_instance().search(q=query, type='track', limit=1)
+        if not results or 'tracks' not in results:
+            return f"{'message': 'No results found for query: {query}'}"
         items = results.get('tracks', {}).get('items', [])
         if not items:
             return f"{'message': 'No track found for query: {query}'}"
-        track = items[0]
+        track_item = items[0]
+        if not track_item:
+            return f"{'message': 'No track found for query: {query}'}"
         # Remove available_markets to avoid large data transfer
-        track['available_markets'] = None
-        track['artists'] = None
-        if 'album' in track:
-            track['album']['available_markets'] = None
-            track['album']['artists'] = None
-        response = json.dumps(track, indent=2)
+        track_item['available_markets'] = None
+        track_item['artists'] = None
+        if 'album' in track_item:
+            track_item['album']['available_markets'] = None
+            track_item['album']['artists'] = None
+        response = json.dumps(track_item, indent=2)
         logger.info(f"Found track: {response}")
         return response
     except Exception as e:
@@ -317,6 +379,7 @@ def spotify_search_track(artist: str, track: str) -> str:
 
 
 @mcp.tool()
+@my_span("spotify_mcp_search_artist")
 def spotify_search_artist(query: str) -> str:
     """
     Search for an artist on Spotify by query string.
@@ -330,8 +393,13 @@ def spotify_search_artist(query: str) -> str:
         str: A formatted string with the top search result, or an error message if no artist is found or an error occurs.
     """
     logger.info(f"Searching for artist: {query}")
+    current_span = trace.get_current_span()
+    current_span.set_attribute("artist.query", query)
+
     try:
         results = spotipy_instance().search(q=query, type='artist', limit=1)
+        if not results or 'artists' not in results:
+            return f"{'message': 'No results found for query: {query}'}"
         items = results.get('artists', {}).get('items', [])
         if not items:
             return f"{'message': 'No artist found for query: {query}'}"
@@ -345,6 +413,7 @@ def spotify_search_artist(query: str) -> str:
 
 
 @mcp.tool()
+@my_span("spotify_mcp_get_artist_top_tracks")
 def spotify_get_artist_top_tracks(artist_id: str, country: str = "US") -> str:
     """
     Get the top tracks for an artist by Spotify artist ID.
@@ -357,8 +426,13 @@ def spotify_get_artist_top_tracks(artist_id: str, country: str = "US") -> str:
         str: A formatted list of the artist's top tracks, or an error message if not found or on error.
     """
     logger.info(f"Fetching top tracks for artist: {artist_id} in {country}")
+    current_span = trace.get_current_span()
+    current_span.set_attribute("artist.id", artist_id)
+    current_span.set_attribute("artist.country", country)
     try:
         results = spotipy_instance().artist_top_tracks(artist_id, country=country)
+        if not results or 'tracks' not in results:
+            return f"{'message': 'No top tracks found for artist: {artist_id}'}"
         tracks = results.get('tracks', [])
         if not tracks:
             return f"{'message': 'No top tracks found for artist: {artist_id}'}"
@@ -369,26 +443,27 @@ def spotify_get_artist_top_tracks(artist_id: str, country: str = "US") -> str:
 
 
 @mcp.tool()
+@my_span("spotify_mcp_get_user_playlists")
 async def spotify_get_user_playlists() -> str:
     """
     Get the playlists for a Spotify user by user ID.
     Returns:
         str: A formatted list of the user's playlists, or an error message if not found or on error.
     """
-    tracer = trace.get_tracer(__name__)
-    with tracer.start_as_current_span("spotify_get_user_playlists") as span:
-        span.set_attribute("spotify.query", "query")
-        span.set_attribute("spotify.artist", "artist")
-        span.set_attribute("spotify.track", "track")
-        logger.info(f"Fetching playlists for current authenticated user")
-        try:
-            playlists = spotipy_instance().current_user_playlists().get('items', [])
-            return json.dumps(playlists, indent=2)
-        except Exception as e:
-            return f"Error fetching user playlists: {str(e)}"
+    logger.info(f"Fetching playlists for current authenticated user")
+    try:
+        playlists_response = spotipy_instance().current_user_playlists()
+        if playlists_response and isinstance(playlists_response, dict):
+            playlists = playlists_response.get('items', [])
+        else:
+            playlists = []
+        return json.dumps(playlists, indent=2)
+    except Exception as e:
+        return f"Error fetching user playlists: {str(e)}"
 
 
 @mcp.tool()
+@my_span("spotify_mcp_get_user_profile")
 async def spotify_get_user_profile() -> str:
     """
     Get the profile information for a Spotify user by user ID.
@@ -401,6 +476,7 @@ async def spotify_get_user_profile() -> str:
         return json.dumps(user_profile, indent=2)
     except Exception as e:
         return f"Error fetching user profile: {str(e)}"
+
 
 if __name__ == "__main__":
     logger.info("Starting FastMCP server for Spotify")
