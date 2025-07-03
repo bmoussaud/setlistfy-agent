@@ -668,17 +668,14 @@ module apiManagement 'modules/api-management.bicep' = {
   name: 'api-management'
   params: {
     location: location
-    serviceName: '${rootname}-apim-${uniqueString(resourceGroup().id)}'
+    serviceName: '${rootname}-apim'
     publisherName: 'Setlistfy Apps'
     publisherEmail: '${rootname}@contososuites.com'
-    skuName: 'Basicv2'
+    skuName: 'Basic'
     skuCount: 1
     aiName: applicationInsights.outputs.aiName
-    //eventHubNamespaceName: 'azure-rambi-ehn-${uniqueString(resourceGroup().id)}'
-    //eventHubName: 'azure-rambi-eh-${uniqueString(resourceGroup().id)}'
   }
   dependsOn: [
-    logAnalyticsWorkspace
     eventHub
   ]
 }

@@ -10,10 +10,8 @@ param publisherName string
 @description('The email address of the API publisher. This information is used by API Management.')
 param publisherEmail string
 
+@description('The name of the Application Insights instance to use for logging and monitoring API Management. This must be an existing Application Insights resource.')
 param aiName string
-
-//param eventHubNamespaceName string
-//param eventHubName string
 
 @description('The name of the SKU to use when creating the API Management service instance. This must be a SKU that supports virtual network integration.')
 param skuName string
