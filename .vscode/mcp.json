@@ -6,8 +6,7 @@
     }, */
     "setlistfm": {
       "type": "sse",
-      "url": "https://setlistfm-mcp.agreeablesea-975c6890.francecentral.azurecontainerapps.io/sse"
-      //"url_local": "http://localhost:9000/sse"
+      "url": "http://127.0.0.1:9000/sse/"
     },
     "spotify": {
       "type": "sse",
