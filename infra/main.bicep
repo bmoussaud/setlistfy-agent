@@ -616,6 +616,7 @@ param modelDeploymentsParameters array = [
     capacity: 120
     deployment: 'Standard'
     version: '2024-11-20'
+    format: 'OpenAI'
   }
   {
     name: '${rootname}-gpt-4o-global'
@@ -623,6 +624,15 @@ param modelDeploymentsParameters array = [
     capacity: 50
     deployment: 'GlobalStandard'
     version: '2024-11-20'
+    format: 'OpenAI'
+  }
+  {
+    name: '${rootname}-phi-4'
+    model: 'Phi-4'
+    version: '7'
+    format: 'Microsoft'
+    capacity: 1
+    deployment: 'GlobalStandard'
   }
 ]
 
@@ -637,7 +647,7 @@ resource modelDeployments 'Microsoft.CognitiveServices/accounts/deployments@2023
     }
     properties: {
       model: {
-        format: 'OpenAI'
+        format: deployment.format
         name: deployment.model
         version: deployment.version
       }
