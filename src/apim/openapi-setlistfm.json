@@ -909,7 +909,7 @@
     "/1.0/setlist/version/{versionId}": {
       "get": {
         "tags": ["/1.0/setlist/version/{versionId}"],
-        "summary": ".",
+        "summary": "Deprecated - always returns Not Found (404). Returns a setlist for the given versionId. The setlist returned isn't necessarily the most recent version. E.g. if you pass the versionId of a setlist that got edited since you last accessed it, you'll get the same version as last time.",
         "description": "<p>\n<strong>Deprecated</strong> - always returns <em>Not Found (404)</em>\n</p>\n\n<p>\nReturns a setlist for the given versionId. The setlist returned isn't necessarily the most recent version. E.g.\nif you pass the versionId of a setlist that got edited since you last accessed it, you'll get the same version as\nlast time.\n</p>",
         "operationId": "resource__1.0_setlist_version__versionId__getSetlistVersion_GET",
         "parameters": [
@@ -1023,7 +1023,7 @@
     "/1.0/setlist/{setlistId}": {
       "get": {
         "tags": ["/1.0/setlist/{setlistId}"],
-        "summary": ".",
+        "summary": "Returns the current version of a setlist. E.g. if you pass the id of a setlist that got edited since you last accessed it, you'll get the current version.",
         "description": "<p>\nReturns the current version of a setlist. E.g. if you pass the id of a setlist that got edited since you last\naccessed it, you'll get the current version.\n</p>",
         "operationId": "resource__1.0_setlist__setlistId__getSetlist_GET",
         "parameters": [
@@ -1189,7 +1189,7 @@
     "/1.0/user/{userId}/attended": {
       "get": {
         "tags": ["/1.0/user/{userId}/attended"],
-        "summary": ".",
+        "summary": "Get a list of setlists of concerts attended by a user.",
         "description": "<p>\nGet a list of setlists of concerts attended by a user.\n</p>",
         "operationId": "resource__1.0_user__userId__attended_getUserAttendedSetlists_GET",
         "parameters": [
@@ -1318,7 +1318,7 @@
     "/1.0/user/{userId}/edited": {
       "get": {
         "tags": ["/1.0/user/{userId}/edited"],
-        "summary": ".",
+        "summary": "Get a list of setlists of concerts edited by a user. The list contains the current version, not the version edited.",
         "description": "<p>\nGet a list of setlists of concerts edited by a user. The list contains the current version, not the version\nedited.\n</p>",
         "operationId": "resource__1.0_user__userId__edited_getUserEditedSetlists_GET",
         "parameters": [
@@ -1507,7 +1507,7 @@
     "/1.0/venue/{venueId}/setlists": {
       "get": {
         "tags": ["/1.0/venue/{venueId}/setlists"],
-        "summary": ".",
+        "summary": "Get setlists for a specific venue.",
         "description": "<p>\nGet setlists for a specific venue.\n</p>",
         "operationId": "resource__1.0_venue__venueId__setlists_getVenueSetlists_GET",
         "parameters": [
