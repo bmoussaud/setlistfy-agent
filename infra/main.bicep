@@ -668,10 +668,10 @@ module apiManagement 'modules/api-management.bicep' = {
   name: 'api-management'
   params: {
     location: location
-    serviceName: '${rootname}-apim'
+    serviceName: '${rootname}-api-mgmt'
     publisherName: 'Setlistfy Apps'
     publisherEmail: '${rootname}@contososuites.com'
-    skuName: 'Basic'
+    skuName: 'Basicv2'
     skuCount: 1
     aiName: applicationInsights.outputs.aiName
   }
@@ -717,7 +717,7 @@ resource keyVaultSecretsUserRoleDefinition 'Microsoft.Authorization/roleDefiniti
 
 @description('Assigns the API Management service the role to browse and read the keys of the Key Vault to the APIM')
 resource keyVaultSecretUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
-  name: guid(kv.id, 'ApiManagement', keyVaultSecretsUserRoleDefinition.id)
+  name: guid(kv.id, apiManagement.name, keyVaultSecretsUserRoleDefinition.id)
   scope: kv
   properties: {
     roleDefinitionId: keyVaultSecretsUserRoleDefinition.id
@@ -730,17 +730,17 @@ output SPOTIFY_MCP_URL string = 'https://${spotifyMcpApp.properties.configuratio
 output SETLISTFM_MCP_URL string = 'https://${setlistfmMcpApp.properties.configuration.ingress.fqdn}/sse'
 output SETLIST_AGENT_URL string = 'https://${setlistAgentpApp.properties.configuration.ingress.fqdn}'
 
-//output AZURE_OPENAI_API_VERSION string = modelDeployment.properties.model.version
 output AZURE_OPENAI_ENDPOINT string = aiFoundry.properties.customSubDomainName
 output OAUTH_SPOTIFY_CLIENT_ID string = spotifyClientId
 output OAUTH_SPOTIFY_CLIENT_SECRET string = spotifyClientSecret
 output OAUTH_SPOTIFY_SCOPES string = 'user-read-private user-read-email user-library-read user-top-read playlist-read-private playlist-modify-public playlist-modify-private'
 
-//output AZURE_OPENAI_CHAT_DEPLOYMENT_NAME string = modelDeployment.name
-//output AZURE_OPENAI_MODEL string = modelDeployment.properties.model.name
+output AZURE_OPENAI_CHAT_DEPLOYMENT_NAME string = modelDeploymentsParameters[0].name
+output AZURE_OPENAI_MODEL string = modelDeploymentsParameters[0].model
+output AZURE_OPENAI_API_VERSION string = modelDeploymentsParameters[0].version
 output AZURE_OPENAI_API_KEY string = '-2'
 output MODEL_DEPLOYMENT_NAME string = modelDeploymentsParameters[0].name
-//https://setlistag-zuxtumaevhs6w-resource.services.ai.azure.com/api/projects/setlist-agent
+
 output PROJECT_ENDPOINT string = project.properties.endpoints['AI Foundry API']
 output AZURE_AI_INFERENCE_ENDPOINT string = '${aiFoundry.properties.endpoints['Azure AI Model Inference API']}/models'
 output AZURE_AI_INFERENCE_API_KEY string = listKeys(aiFoundry.id, '2025-04-01-preview').key1
