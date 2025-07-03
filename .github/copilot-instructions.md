@@ -57,6 +57,12 @@ MySetlistAgent is a modular microservice project for music and weather data, bui
 - The dev container includes Python, Node.js, Docker, Azure CLI, and all required dependencies.
 - Use `"$BROWSER" <url>` to open web pages from the terminal.
 
+## Git Commit Guidelines
+
+- Use clear, descriptive commit messages.
+- Follow the format: `type(scope): subject` (e.g., `feat(setlist-agent): add new setlist retrieval feature`).
+- types include `feat`, `fix`, `docs`, `style`, `refactor`, `test`, and `chore`.
+
 ## Contact
 
 For questions or issues, see the project `README.md` or contact the maintainer.
