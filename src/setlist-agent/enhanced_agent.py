@@ -54,7 +54,7 @@ class EnhancedSetlistAgent:
         required_vars = [
             "AZURE_AI_INFERENCE_API_KEY",
             "AZURE_AI_INFERENCE_ENDPOINT",
-            "AZURE_OPENAI_CHAT_DEPLOYMENT_NAME"
+            "MODEL_DEPLOYMENT_NAME"
         ]
 
         for var in required_vars:
@@ -65,7 +65,7 @@ class EnhancedSetlistAgent:
         # Add Azure AI Inference service
         ai_inference_service = AzureAIInferenceChatCompletion(
             ai_model_id=os.getenv(
-                "AZURE_OPENAI_CHAT_DEPLOYMENT_NAME"),  # type: ignore
+                "MODEL_DEPLOYMENT_NAME"),  # type: ignore
             api_key=os.getenv("AZURE_AI_INFERENCE_API_KEY"),
             endpoint=os.getenv("AZURE_AI_INFERENCE_ENDPOINT"),
         )

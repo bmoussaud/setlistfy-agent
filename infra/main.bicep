@@ -738,11 +738,12 @@ output OAUTH_SPOTIFY_SCOPES string = 'user-read-private user-read-email user-lib
 output AZURE_OPENAI_CHAT_DEPLOYMENT_NAME string = modelDeploymentsParameters[0].name
 output AZURE_OPENAI_MODEL string = modelDeploymentsParameters[0].model
 output AZURE_OPENAI_API_VERSION string = modelDeploymentsParameters[0].version
-output AZURE_OPENAI_API_KEY string = '-2'
-output MODEL_DEPLOYMENT_NAME string = modelDeploymentsParameters[0].name
+//output AZURE_OPENAI_API_KEY string = '-2'
 
 output PROJECT_ENDPOINT string = project.properties.endpoints['AI Foundry API']
-output AZURE_AI_INFERENCE_ENDPOINT string = '${aiFoundry.properties.endpoints['Azure AI Model Inference API']}/models'
+output AZURE_AI_INFERENCE_ENDPOINT string = '${aiFoundry.properties.endpoints['Azure AI Model Inference API']}models'
 output AZURE_AI_INFERENCE_API_KEY string = listKeys(aiFoundry.id, '2025-04-01-preview').key1
+output MODEL_DEPLOYMENT_NAME string = modelDeploymentsParameters[0].name
+
 output APPLICATIONINSIGHTS_CONNECTION_STRING string = applicationInsights.outputs.connectionString
 output CHAINLIT_AUTH_SECRET string = chainlitAuthSecret
