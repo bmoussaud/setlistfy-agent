@@ -438,7 +438,7 @@ resource setlistAgentpApp 'Microsoft.App/containerApps@2024-10-02-preview' = {
             }
             {
               name: 'MODEL_DEPLOYMENT_NAME'
-              value: modelDeploymentsParameters[1].name
+              value: modelDeploymentsParameters[0].name
             }
             {
               name: 'PROJECT_ENDPOINT'
@@ -571,7 +571,7 @@ module userPortalAccess 'modules/user_portal_role.bicep' = {
   from https://github.com/azure-ai-foundry/foundry-samples/blob/main/samples/microsoft/infrastructure-setup/00-basic/main.bicep
 */
 resource aiFoundry 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
-  name: '${rootname}-${aiFoundryLocation}-ai-foundry'
+  name: '${rootname}-ai-foundry-${aiFoundryLocation}'
   location: aiFoundryLocation
   tags: {
     'azd-service-name': 'ai-foundry'
@@ -588,7 +588,7 @@ resource aiFoundry 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
     // required to work in AI Foundry
     allowProjectManagement: true
     // Defines developer API endpoint subdomain
-    customSubDomainName: '${rootname}-${aiFoundryLocation}-ai-foundry'
+    customSubDomainName: '${rootname}-ai-foundry-${aiFoundryLocation}'
     publicNetworkAccess: 'Enabled'
 
     //disableLocalAuth: true
@@ -597,7 +597,7 @@ resource aiFoundry 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
 
 resource project 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-preview' = {
   parent: aiFoundry
-  name: 'setlist-agent-${aiFoundryLocation}'
+  name: '${rootname}-project-${aiFoundryLocation}'
   location: aiFoundryLocation
   properties: {
     description: 'a world of music'
@@ -611,17 +611,9 @@ resource project 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-previ
 @description('Model deployments for OpenAI')
 param modelDeploymentsParameters array = [
   {
-    name: '${rootname}-gpt-4o'
-    model: 'gpt-4o'
-    capacity: 120
-    deployment: 'Standard'
-    version: '2024-11-20'
-    format: 'OpenAI'
-  }
-  {
     name: '${rootname}-gpt-4.1-mini'
     model: 'gpt-4.1-mini'
-    capacity: json('5000')
+    capacity: 1
     deployment: 'GlobalStandard'
     version: '2025-04-14'
     format: 'OpenAI'
@@ -629,7 +621,7 @@ param modelDeploymentsParameters array = [
   {
     name: '${rootname}-gpt-4.1-nano'
     model: 'gpt-4.1-nano'
-    capacity: json('5000')
+    capacity: 1
     deployment: 'GlobalStandard'
     version: '2025-04-14'
     format: 'OpenAI'
@@ -758,15 +750,10 @@ output OAUTH_SPOTIFY_CLIENT_ID string = spotifyClientId
 output OAUTH_SPOTIFY_CLIENT_SECRET string = spotifyClientSecret
 output OAUTH_SPOTIFY_SCOPES string = 'user-read-private user-read-email user-library-read user-top-read playlist-read-private playlist-modify-public playlist-modify-private'
 
-output AZURE_OPENAI_CHAT_DEPLOYMENT_NAME string = modelDeploymentsParameters[0].name
-output AZURE_OPENAI_MODEL string = modelDeploymentsParameters[1].model
-output AZURE_OPENAI_API_VERSION string = modelDeploymentsParameters[0].version
-//output AZURE_OPENAI_API_KEY string = '-2'
-
 output PROJECT_ENDPOINT string = project.properties.endpoints['AI Foundry API']
 output AZURE_AI_INFERENCE_ENDPOINT string = '${aiFoundry.properties.endpoints['Azure AI Model Inference API']}models'
 output AZURE_AI_INFERENCE_API_KEY string = listKeys(aiFoundry.id, '2025-04-01-preview').key1
-output MODEL_DEPLOYMENT_NAME string = modelDeploymentsParameters[1].name
+output MODEL_DEPLOYMENT_NAME string = modelDeploymentsParameters[0].name
 
 output APPLICATIONINSIGHTS_CONNECTION_STRING string = applicationInsights.outputs.connectionString
 output CHAINLIT_AUTH_SECRET string = chainlitAuthSecret
