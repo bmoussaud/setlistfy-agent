@@ -64,12 +64,20 @@ async def on_chat_start():
             f"saved tracks, listening history, and more!"
         ).send()
 
-        # Initialize agent with Spotify authentication
+        # Display a message explaining the model used by the agent
+        await cl.Message(
+            content=(
+                "🤖 **Model Info:**\n"
+                f"This agent uses an enhanced language model ({os.getenv("MODEL_DEPLOYMENT_NAME")}) to understand your requests and interact with Spotify and Setlist.fm. "
+                "It leverages advanced retrieval and reasoning to provide setlist, playlist, and music recommendations, as well as weather insights for events."
+            )
+        ).send()  # Initialize agent with Spotify authentication
         logger.info(
             f"Initializing agent with Spotify auth for user: {user.identifier}")
-        await agent.refresh_spotify_connection(access_token=user.metadata.get("access_token"),
-                                               refresh_token=user.metadata.get(
-            "refresh_token"),
+        await agent.refresh_spotify_connection(
+            access_token=user.metadata.get("access_token"),
+            refresh_token=user.metadata.get(
+                "refresh_token"),
             expires_at=user.metadata.get("expires_at"))
         # Display the Spotify access token in the chat (for debugging/demo purposes)
         access_token = cl.user_session.get("spotify_token")

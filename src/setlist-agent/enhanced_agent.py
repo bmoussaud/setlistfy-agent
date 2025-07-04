@@ -85,10 +85,24 @@ class EnhancedSetlistAgent:
         await self._configure_telemetry()
 
         # Create the chat completion agent
+        model_deployment_name = os.getenv("MODEL_DEPLOYMENT_NAME", "")
+        logger.info(f"Using model deployment: {model_deployment_name}")
+
+        # Adjust function choice behavior based on model
+        if model_deployment_name and "phi-4" in model_deployment_name.lower():
+            logger.info(
+                "Using Phi-4 model - ensuring auto tool choice is properly configured")
+            function_choice = FunctionChoiceBehavior.Auto(
+                tool_call_parser="default", enable_auto_tool_choice=True)
+        else:
+            logger.info(
+                "Using non-Phi-4 model - using default auto function choice behavior")
+            function_choice = FunctionChoiceBehavior.Auto()
+
         self._agent = ChatCompletionAgent(
             kernel=self._kernel,
             name="enhanced_setlist_agent",
-            function_choice_behavior=FunctionChoiceBehavior.Auto(),
+            function_choice_behavior=function_choice,
             instructions=self._get_agent_instructions())
 
         self._thread = ChatHistoryAgentThread(chat_history=ChatHistory())
@@ -190,8 +204,8 @@ class EnhancedSetlistAgent:
         You are a helpful music assistant that provides information about artists, concerts, setlists, and Spotify data.
         You can search for artists, find setlists from concerts, provide venue information, and access Spotify features.
         
-        When asked about an artist's concerts or setlists, use the SetlistFM plugin to search for that information.
-        For Spotify-related queries, use the Spotify plugin.
+        When asked about an artist's concerts or setlists,always use the SetlistFM plugin to search for that information.
+        For Spotify-related queries, always use the Spotify plugin.
         
         Always try to be helpful and provide as much relevant information as possible.
         """

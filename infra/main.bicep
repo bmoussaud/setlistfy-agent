@@ -21,7 +21,7 @@ param spotifyClientId string
 param spotifyClientSecret string
 
 @description('Indicates if the latest image for the Spotify MCP microservice exists in the ACR.')
-param isLatestImageExist bool = false
+param isLatestImageExist bool = true
 
 var chainlitAuthSecret = 'u.tT0881gp@T9$mRHr4XWs/uk2R8mqI5dSo@R2AO_Rj63t5P$3T,x4aN,Shpo@~'
 
@@ -434,11 +434,11 @@ resource setlistAgentpApp 'Microsoft.App/containerApps@2024-10-02-preview' = {
             }
             {
               name: 'AZURE_AI_INFERENCE_ENDPOINT'
-              value: '${aiFoundry.properties.endpoints['Azure AI Model Inference API']}/models'
+              value: '${aiFoundry.properties.endpoints['Azure AI Model Inference API']}models'
             }
             {
-              name: 'AZURE_OPENAI_CHAT_DEPLOYMENT_NAME'
-              value: modelDeploymentsParameters[0].name
+              name: 'MODEL_DEPLOYMENT_NAME'
+              value: modelDeploymentsParameters[1].name
             }
             {
               name: 'PROJECT_ENDPOINT'
@@ -619,13 +619,22 @@ param modelDeploymentsParameters array = [
     format: 'OpenAI'
   }
   {
-    name: '${rootname}-gpt-4o-global'
-    model: 'gpt-4o'
-    capacity: 50
+    name: '${rootname}-gpt-4.1-mini'
+    model: 'gpt-4.1-mini'
+    capacity: json('5000')
     deployment: 'GlobalStandard'
-    version: '2024-11-20'
+    version: '2025-04-14'
     format: 'OpenAI'
   }
+  {
+    name: '${rootname}-gpt-4.1-nano'
+    model: 'gpt-4.1-nano'
+    capacity: json('5000')
+    deployment: 'GlobalStandard'
+    version: '2025-04-14'
+    format: 'OpenAI'
+  }
+
   {
     name: '${rootname}-phi-4'
     model: 'Phi-4'
@@ -633,6 +642,10 @@ param modelDeploymentsParameters array = [
     format: 'Microsoft'
     capacity: 1
     deployment: 'GlobalStandard'
+    settings: {
+      enableAutoToolChoice: true
+      toolCallParser: 'default'
+    }
   }
 ]
 
@@ -746,14 +759,14 @@ output OAUTH_SPOTIFY_CLIENT_SECRET string = spotifyClientSecret
 output OAUTH_SPOTIFY_SCOPES string = 'user-read-private user-read-email user-library-read user-top-read playlist-read-private playlist-modify-public playlist-modify-private'
 
 output AZURE_OPENAI_CHAT_DEPLOYMENT_NAME string = modelDeploymentsParameters[0].name
-output AZURE_OPENAI_MODEL string = modelDeploymentsParameters[0].model
+output AZURE_OPENAI_MODEL string = modelDeploymentsParameters[1].model
 output AZURE_OPENAI_API_VERSION string = modelDeploymentsParameters[0].version
 //output AZURE_OPENAI_API_KEY string = '-2'
 
 output PROJECT_ENDPOINT string = project.properties.endpoints['AI Foundry API']
 output AZURE_AI_INFERENCE_ENDPOINT string = '${aiFoundry.properties.endpoints['Azure AI Model Inference API']}models'
 output AZURE_AI_INFERENCE_API_KEY string = listKeys(aiFoundry.id, '2025-04-01-preview').key1
-output MODEL_DEPLOYMENT_NAME string = modelDeploymentsParameters[0].name
+output MODEL_DEPLOYMENT_NAME string = modelDeploymentsParameters[1].name
 
 output APPLICATIONINSIGHTS_CONNECTION_STRING string = applicationInsights.outputs.connectionString
 output CHAINLIT_AUTH_SECRET string = chainlitAuthSecret
