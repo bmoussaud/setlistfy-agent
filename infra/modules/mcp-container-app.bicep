@@ -3,12 +3,19 @@ param name string
 param location string
 param managedEnvironmentId string
 param acrLoginServer string
-
 param identityId string
-param image string
-
 param secrets array
 param envVars array
+
+param isLatestImageExist bool = false
+
+module fetchLatestImage 'fetch-container-image.bicep' = {
+  name: '${name}-fetch-image'
+  params: {
+    exists: isLatestImageExist
+    name: 'spotify-mcp-server'
+  }
+}
 
 resource mcpApp 'Microsoft.App/containerApps@2024-10-02-preview' = {
   name: name
@@ -53,7 +60,7 @@ resource mcpApp 'Microsoft.App/containerApps@2024-10-02-preview' = {
       containers: [
         {
           name: name
-          image: image
+          image: fetchLatestImage.outputs.?containers[?0].?image ?? 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
           env: envVars
         }
       ]

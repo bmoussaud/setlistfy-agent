@@ -21,7 +21,7 @@ param spotifyClientId string
 param spotifyClientSecret string
 
 @description('Indicates if the latest image for the Spotify MCP microservice exists in the ACR.')
-param isLatestImageExist bool = false
+param isLatestImageExist bool = true
 
 var chainlitAuthSecret = 'u.tT0881gp@T9$mRHr4XWs/uk2R8mqI5dSo@R2AO_Rj63t5P$3T,x4aN,Shpo@~'
 
@@ -146,8 +146,7 @@ module setlistfmMcpApp 'modules/mcp-container-app.bicep' = {
     managedEnvironmentId: containerAppsEnv.id
     acrLoginServer: acr.properties.loginServer
     identityId: containerApplicationIdentity.id
-    image: setlistfmMcpAppFetchLatestImage.outputs.?containers[?0].?image ?? 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
-
+    isLatestImageExist: isLatestImageExist
     secrets: [
       {
         name: 'setlistfm-api-key'
@@ -156,7 +155,7 @@ module setlistfmMcpApp 'modules/mcp-container-app.bicep' = {
       }
       {
         name: 'applicationinsights-connectionstring'
-        keyVaultUrl: secretAppInsightInstKey.properties.secretUri
+        keyVaultUrl: secretAppInsightCS.properties.secretUri
         identity: containerApplicationIdentity.id
       }
     ]
@@ -181,11 +180,11 @@ module spotifyMcpApp 'modules/mcp-container-app.bicep' = {
     managedEnvironmentId: containerAppsEnv.id
     acrLoginServer: acr.properties.loginServer
     identityId: containerApplicationIdentity.id
-    image: spotifyMcpAppFetchLatestImage.outputs.?containers[?0].?image ?? 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
+    isLatestImageExist: isLatestImageExist
     secrets: [
       {
         name: 'applicationinsights-connectionstring'
-        keyVaultUrl: secretAppInsightInstKey.properties.secretUri
+        keyVaultUrl: secretAppInsightCS.properties.secretUri
         identity: containerApplicationIdentity.id
       }
     ]
@@ -198,121 +197,81 @@ module spotifyMcpApp 'modules/mcp-container-app.bicep' = {
   }
 }
 
-resource setlistAgentpApp 'Microsoft.App/containerApps@2024-10-02-preview' = {
+module setlistAgentpApp 'modules/mcp-container-app.bicep' = {
   name: 'setlist-agent'
-  location: location
-  tags: { 'azd-service-name': 'setlist-agent', 'azd-env-name': environmentName }
-  identity: {
-    type: 'UserAssigned'
-    userAssignedIdentities: {
-      '${containerApplicationIdentity.id}': {}
-    }
-  }
-  properties: {
+  params: {
+    name: 'setlist-agent'
+    location: location
     managedEnvironmentId: containerAppsEnv.id
-    configuration: {
-      ingress: {
-        external: true
-        targetPort: 80
-        allowInsecure: false
-        traffic: [
-          {
-            latestRevision: true
-            weight: 100
-          }
-        ]
-        corsPolicy: {
-          allowedOrigins: ['*']
-          allowedMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
-          allowedHeaders: ['*']
-          exposeHeaders: ['*']
-          allowCredentials: false
-        }
+    acrLoginServer: acr.properties.loginServer
+    identityId: containerApplicationIdentity.id
+    isLatestImageExist: isLatestImageExist
+    secrets: [
+      {
+        name: 'spotify-client-id'
+        keyVaultUrl: secretSpotifyClientId.properties.secretUri
+        identity: containerApplicationIdentity.id
       }
-      registries: [
-        {
-          identity: containerApplicationIdentity.id
-          server: acr.properties.loginServer
-        }
-      ]
-      secrets: [
-        {
-          name: 'spotify-client-id'
-          keyVaultUrl: secretSpotifyClientId.properties.secretUri
-          identity: containerApplicationIdentity.id
-        }
-        {
-          name: 'spotify-client-secret'
-          keyVaultUrl: secretSpotifyClientSecret.properties.secretUri
-          identity: containerApplicationIdentity.id
-        }
-
-        {
-          name: 'applicationinsights-connectionstring'
-          keyVaultUrl: secretAppInsightInstKey.properties.secretUri
-          identity: containerApplicationIdentity.id
-        }
-      ]
-    }
-    template: {
-      containers: [
-        {
-          name: 'setlist-agent'
-          image: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
-          env: [
-            {
-              name: 'AZURE_AI_INFERENCE_API_KEY'
-              value: listKeys(aiFoundry.id, '2025-04-01-preview').key1
-            }
-            {
-              name: 'AZURE_AI_INFERENCE_ENDPOINT'
-              value: '${aiFoundry.properties.endpoints['Azure AI Model Inference API']}models'
-            }
-            {
-              name: 'MODEL_DEPLOYMENT_NAME'
-              value: modelDeploymentsParameters[0].name
-            }
-            {
-              name: 'PROJECT_ENDPOINT'
-              value: project.properties.endpoints['AI Foundry API']
-            }
-
-            {
-              name: 'SPOTIFY_MCP_URL'
-              value: 'http://${spotifyMcpApp.outputs.containerAppName}/sse'
-            }
-            {
-              name: 'SETLISTFM_MCP_URL'
-              value: 'http://${setlistfmMcpApp.outputs.containerAppName}/sse'
-            }
-            {
-              name: 'OAUTH_SPOTIFY_CLIENT_ID'
-              secretRef: 'spotify-client-id'
-            }
-            {
-              name: 'OAUTH_SPOTIFY_CLIENT_SECRET'
-              secretRef: 'spotify-client-secret'
-            }
-
-            {
-              name: 'OAUTH_SPOTIFY_SCOPES'
-              value: 'user-read-private user-read-email user-library-read user-top-read playlist-read-private playlist-modify-public playlist-modify-private user-follow-read user-follow-modify streaming'
-            }
-            {
-              name: 'CHAINLIT_AUTH_SECRET'
-              value: chainlitAuthSecret
-            }
-            {
-              name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
-              secretRef: 'applicationinsights-connectionstring'
-            }
-          ]
-        }
-      ]
-      scale: {
-        minReplicas: 1
+      {
+        name: 'spotify-client-secret'
+        keyVaultUrl: secretSpotifyClientSecret.properties.secretUri
+        identity: containerApplicationIdentity.id
       }
-    }
+
+      {
+        name: 'applicationinsights-connectionstring'
+        keyVaultUrl: secretAppInsightCS.properties.secretUri
+        identity: containerApplicationIdentity.id
+      }
+    ]
+    envVars: [
+      {
+        name: 'AZURE_AI_INFERENCE_API_KEY'
+        value: listKeys(aiFoundry.id, '2025-04-01-preview').key1
+      }
+      {
+        name: 'AZURE_AI_INFERENCE_ENDPOINT'
+        value: '${aiFoundry.properties.endpoints['Azure AI Model Inference API']}models'
+      }
+      {
+        name: 'MODEL_DEPLOYMENT_NAME'
+        value: modelDeploymentsParameters[0].name
+      }
+      {
+        name: 'PROJECT_ENDPOINT'
+        value: project.properties.endpoints['AI Foundry API']
+      }
+
+      {
+        name: 'SPOTIFY_MCP_URL'
+        value: 'http://${spotifyMcpApp.outputs.containerAppName}/sse'
+      }
+      {
+        name: 'SETLISTFM_MCP_URL'
+        value: 'http://${setlistfmMcpApp.outputs.containerAppName}/sse'
+      }
+      {
+        name: 'OAUTH_SPOTIFY_CLIENT_ID'
+        secretRef: 'spotify-client-id'
+      }
+      {
+        name: 'OAUTH_SPOTIFY_CLIENT_SECRET'
+        secretRef: 'spotify-client-secret'
+      }
+
+      {
+        name: 'OAUTH_SPOTIFY_SCOPES'
+        value: 'user-read-private user-read-email user-library-read user-top-read playlist-read-private playlist-modify-public playlist-modify-private user-follow-read user-follow-modify streaming'
+      }
+      {
+        name: 'CHAINLIT_AUTH_SECRET'
+        value: chainlitAuthSecret
+      }
+      {
+        name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+        secretRef: 'applicationinsights-connectionstring'
+      }
+    ]
   }
 }
 
@@ -564,7 +523,7 @@ resource keyVaultSecretUserRoleAssignment 'Microsoft.Authorization/roleAssignmen
 output AZURE_CONTAINER_REGISTRY_ENDPOINT string = acr.properties.loginServer
 output SPOTIFY_MCP_URL string = 'https://${spotifyMcpApp.outputs.fqdn}/sse'
 output SETLISTFM_MCP_URL string = 'https://${setlistfmMcpApp.outputs.fqdn}/sse'
-output SETLIST_AGENT_URL string = 'https://${setlistAgentpApp.properties.configuration.ingress.fqdn}'
+output SETLIST_AGENT_URL string = 'https://${setlistAgentpApp.outputs.fqdn}'
 
 output AZURE_OPENAI_ENDPOINT string = aiFoundry.properties.customSubDomainName
 output OAUTH_SPOTIFY_CLIENT_ID string = spotifyClientId
@@ -577,20 +536,5 @@ output AZURE_AI_INFERENCE_API_KEY string = listKeys(aiFoundry.id, '2025-04-01-pr
 output MODEL_DEPLOYMENT_NAME string = modelDeploymentsParameters[0].name
 
 output APPLICATIONINSIGHTS_CONNECTION_STRING string = applicationInsights.outputs.connectionString
+
 output CHAINLIT_AUTH_SECRET string = chainlitAuthSecret
-
-module setlistfmMcpAppFetchLatestImage './modules/fetch-container-image.bicep' = {
-  name: 'setlistfm-mcp-fetch-image'
-  params: {
-    exists: isLatestImageExist
-    name: 'setlistfm-mcp'
-  }
-}
-
-module spotifyMcpAppFetchLatestImage './modules/fetch-container-image.bicep' = {
-  name: 'spotify-mcp-fetch-image'
-  params: {
-    exists: isLatestImageExist
-    name: 'spotify-mcp'
-  }
-}
