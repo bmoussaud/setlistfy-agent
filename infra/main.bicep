@@ -21,7 +21,7 @@ param spotifyClientId string
 param spotifyClientSecret string
 
 @description('Indicates if the latest image for the Spotify MCP microservice exists in the ACR.')
-param isLatestImageExist bool = true
+param isLatestImageExist bool = false
 
 var chainlitAuthSecret = 'u.tT0881gp@T9$mRHr4XWs/uk2R8mqI5dSo@R2AO_Rj63t5P$3T,x4aN,Shpo@~'
 
@@ -618,6 +618,7 @@ param modelDeploymentsParameters array = [
     version: '2025-04-14'
     format: 'OpenAI'
   }
+  /*
   {
     name: '${rootname}-gpt-4.1-nano'
     model: 'gpt-4.1-nano'
@@ -638,7 +639,7 @@ param modelDeploymentsParameters array = [
       enableAutoToolChoice: true
       toolCallParser: 'default'
     }
-  }
+  }*/
 ]
 
 @batchSize(1)
