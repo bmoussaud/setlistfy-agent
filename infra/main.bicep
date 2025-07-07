@@ -72,6 +72,7 @@ resource acr 'Microsoft.ContainerRegistry/registries@2023-01-01-preview' = {
   tags: tags
 }
 
+//#deprecated
 resource azrKeyVaultContributor 'Microsoft.ManagedIdentity/userAssignedIdentities@2018-11-30' = {
   name: '${rootname}-keyvault-user'
   location: location
@@ -119,250 +120,89 @@ resource containerAppsEnv 'Microsoft.App/managedEnvironments@2024-10-02-preview'
   identity: {
     type: 'UserAssigned'
     userAssignedIdentities: {
-      '${azrKeyVaultContributor.id}': {}
+      '${containerApplicationIdentity.id}': {}
     }
   }
+  dependsOn: [
+    containerApplicationIdentityAcrPull // Assigns the ACR Pull role to the container application identity
+    containerApplicationIdentityKeyVaultContributorRoleAssignment // Assigns the Key Vault Contributor role to the container application identity
+  ]
 }
 
-resource uaiAcrPull 'Microsoft.ManagedIdentity/userAssignedIdentities@2022-01-31-preview' = {
-  name: '${rootname}-acr-pull'
+resource containerApplicationIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2022-01-31-preview' = {
+  name: '${rootname}-container-app-identity'
   location: location
 }
 
-@description('This allows the managed identity of the container app to access the registry, note scope is applied to the wider ResourceGroup not the ACR')
-resource uaiRbacAcrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(resourceGroup().id, uaiAcrPull.id, 'ACR Pull Role RG')
+resource containerApplicationIdentityAcrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(resourceGroup().id, containerApplicationIdentity.id, 'ACR Pull Role RG')
   scope: resourceGroup()
   properties: {
     roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
-    principalId: uaiAcrPull.properties.principalId
+    principalId: containerApplicationIdentity.properties.principalId
     principalType: 'ServicePrincipal'
   }
 }
 
-module setlistfmMcpAppFetchLatestImage './modules/fetch-container-image.bicep' = {
-  name: 'setlistfm-mcp-fetch-image'
+module setlistfmMcpApp 'modules/mcp-container-app.bicep' = {
+  name: 'setlistfm-mcp-app'
   params: {
-    exists: isLatestImageExist
-    name: 'setlistfm-mcp'
-  }
-}
-
-resource setlistfmMcpApp 'Microsoft.App/containerApps@2024-10-02-preview' = {
-  name: 'setlistfm-mcp'
-  location: location
-  tags: { 'azd-service-name': 'setlistfm-mcp-server', 'azd-env-name': environmentName }
-  identity: {
-    type: 'UserAssigned'
-    userAssignedIdentities: {
-      '${uaiAcrPull.id}': {}
-      '${azrKeyVaultContributor.id}': {}
-    }
-  }
-  properties: {
+    name: 'setlistfm-mcp-server'
+    location: location
     managedEnvironmentId: containerAppsEnv.id
-    configuration: {
-      ingress: {
-        external: true
-        targetPort: 80
-        allowInsecure: false
-        traffic: [
-          {
-            latestRevision: true
-            weight: 100
-          }
-        ]
-        corsPolicy: {
-          allowedOrigins: ['*']
-          allowedMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
-          allowedHeaders: ['*']
-          exposeHeaders: ['*']
-          allowCredentials: false
-        }
-      }
-      registries: [
-        {
-          identity: uaiAcrPull.id
-          server: acr.properties.loginServer
-        }
-      ]
-      secrets: [
-        {
-          name: 'setlistfm-api-key'
-          keyVaultUrl: '${kv.properties.vaultUri}secrets/SETLISTFM-API-KEY'
-          identity: azrKeyVaultContributor.id
-        }
-        {
-          name: 'applicationinsights-connectionstring'
-          keyVaultUrl: '${kv.properties.vaultUri}secrets/APPLICATIONINSIGHTS-CONNECTIONSTRING'
-          identity: azrKeyVaultContributor.id
-        }
-      ]
-    }
+    acrLoginServer: acr.properties.loginServer
+    identityId: containerApplicationIdentity.id
+    image: setlistfmMcpAppFetchLatestImage.outputs.?containers[?0].?image ?? 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
 
-    template: {
-      containers: [
-        {
-          name: 'setlistfm-mcp'
-          image: setlistfmMcpAppFetchLatestImage.outputs.?containers[?0].?image ?? 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
-          env: [
-            {
-              name: 'SETLISTFM_API_KEY'
-              secretRef: 'setlistfm-api-key'
-            }
-            {
-              name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
-              secretRef: 'applicationinsights-connectionstring'
-            }
-          ]
-          /* probes: [
-            {
-              type: 'Liveness'
-              httpGet: {
-                path: '/liveness'
-                port: 80
-                scheme: 'HTTP'
-              }
-              initialDelaySeconds: 15
-              periodSeconds: 20
-              failureThreshold: 3
-              timeoutSeconds: 5
-            }
-            {
-              type: 'Readiness'
-
-              httpGet: {
-                path: '/readiness'
-                port: 80
-                scheme: 'HTTP'
-              }
-              failureThreshold: 3
-              timeoutSeconds: 5
-            }
-            {
-              type: 'Startup'
-              httpGet: {
-                path: '/startup'
-                port: 80
-                scheme: 'HTTP'
-              }
-              failureThreshold: 3
-              timeoutSeconds: 2
-            }
-          ] */
-        }
-      ]
-      scale: {
-        minReplicas: 1
+    secrets: [
+      {
+        name: 'setlistfm-api-key'
+        keyVaultUrl: '${kv.properties.vaultUri}secrets/SETLISTFM-API-KEY'
+        identity: containerApplicationIdentity.id
       }
-    }
+      {
+        name: 'applicationinsights-connectionstring'
+        keyVaultUrl: '${kv.properties.vaultUri}secrets/APPLICATIONINSIGHTS-CONNECTIONSTRING'
+        identity: containerApplicationIdentity.id
+      }
+    ]
+    envVars: [
+      {
+        name: 'SETLISTFM_API_KEY'
+        secretRef: 'setlistfm-api-key'
+      }
+      {
+        name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+        secretRef: 'applicationinsights-connectionstring'
+      }
+    ]
   }
-  dependsOn: [
-    uaiRbacAcrPull
-    keyVaultContributorRoleAssignment
-  ]
 }
 
-module spotifyMcpAppFetchLatestImage './modules/fetch-container-image.bicep' = {
-  name: 'spotify-mcp-fetch-image'
+module spotifyMcpApp 'modules/mcp-container-app.bicep' = {
+  name: 'spotify-mcp-app'
   params: {
-    exists: isLatestImageExist
-    name: 'spotify-mcp'
-  }
-}
-
-resource spotifyMcpApp 'Microsoft.App/containerApps@2024-10-02-preview' = {
-  name: 'spotify-mcp'
-  location: location
-  tags: { 'azd-service-name': 'spotify-mcp-server', 'azd-env-name': environmentName }
-  identity: {
-    type: 'UserAssigned'
-    userAssignedIdentities: {
-      '${uaiAcrPull.id}': {}
-      '${azrKeyVaultContributor.id}': {}
-    }
-  }
-  properties: {
+    name: 'spotify-mcp-server'
+    location: location
     managedEnvironmentId: containerAppsEnv.id
-    configuration: {
-      ingress: {
-        external: true
-        targetPort: 80
-        allowInsecure: false
-        traffic: [
-          {
-            latestRevision: true
-            weight: 100
-          }
-        ]
-        corsPolicy: {
-          allowedOrigins: ['*']
-          allowedMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
-          allowedHeaders: ['*']
-          exposeHeaders: ['*']
-          allowCredentials: false
-        }
+    acrLoginServer: acr.properties.loginServer
+    identityId: containerApplicationIdentity.id
+    image: spotifyMcpAppFetchLatestImage.outputs.?containers[?0].?image ?? 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
+
+    secrets: [
+      {
+        name: 'applicationinsights-connectionstring'
+        keyVaultUrl: '${kv.properties.vaultUri}secrets/APPLICATIONINSIGHTS-CONNECTIONSTRING'
+        identity: containerApplicationIdentity.id
       }
-      registries: [
-        {
-          identity: uaiAcrPull.id
-          server: acr.properties.loginServer
-        }
-      ]
-      secrets: [
-        {
-          name: 'applicationinsights-connectionstring'
-          keyVaultUrl: '${kv.properties.vaultUri}secrets/APPLICATIONINSIGHTS-CONNECTIONSTRING'
-          identity: azrKeyVaultContributor.id
-        }
-      ]
-    }
-    template: {
-      containers: [
-        {
-          name: 'spotify-mcp'
-          image: spotifyMcpAppFetchLatestImage.outputs.?containers[?0].?image ?? 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
-          env: [
-            {
-              name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
-              secretRef: 'applicationinsights-connectionstring'
-            }
-          ]
-          /* probes: [
-            {
-              type: 'Liveness'
-              httpGet: {
-                path: '/liveness'
-                port: 80
-                scheme: 'HTTP'
-              }
-              initialDelaySeconds: 5
-              periodSeconds: 10
-              failureThreshold: 3
-            }
-            {
-              type: 'Readiness'
-              httpGet: {
-                path: '/readiness'
-                port: 80
-                scheme: 'HTTP'
-              }
-              initialDelaySeconds: 5
-              periodSeconds: 10
-              failureThreshold: 3
-            }
-          ] */
-        }
-      ]
-      scale: {
-        minReplicas: 1
+    ]
+    envVars: [
+      {
+        name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+        secretRef: 'applicationinsights-connectionstring'
       }
-    }
+    ]
   }
-  dependsOn: [
-    uaiRbacAcrPull
-    keyVaultContributorRoleAssignment
-  ]
 }
 
 resource setlistAgentpApp 'Microsoft.App/containerApps@2024-10-02-preview' = {
@@ -372,8 +212,7 @@ resource setlistAgentpApp 'Microsoft.App/containerApps@2024-10-02-preview' = {
   identity: {
     type: 'UserAssigned'
     userAssignedIdentities: {
-      '${uaiAcrPull.id}': {}
-      '${azrKeyVaultContributor.id}': {}
+      '${containerApplicationIdentity.id}': {}
     }
   }
   properties: {
@@ -399,7 +238,7 @@ resource setlistAgentpApp 'Microsoft.App/containerApps@2024-10-02-preview' = {
       }
       registries: [
         {
-          identity: uaiAcrPull.id
+          identity: containerApplicationIdentity.id
           server: acr.properties.loginServer
         }
       ]
@@ -407,18 +246,18 @@ resource setlistAgentpApp 'Microsoft.App/containerApps@2024-10-02-preview' = {
         {
           name: 'spotify-client-id'
           keyVaultUrl: secretSpotifyClientId.properties.secretUri
-          identity: azrKeyVaultContributor.id
+          identity: containerApplicationIdentity.id
         }
         {
           name: 'spotify-client-secret'
           keyVaultUrl: secretSpotifyClientSecret.properties.secretUri
-          identity: azrKeyVaultContributor.id
+          identity: containerApplicationIdentity.id
         }
 
         {
           name: 'applicationinsights-connectionstring'
           keyVaultUrl: '${kv.properties.vaultUri}secrets/APPLICATIONINSIGHTS-CONNECTIONSTRING'
-          identity: azrKeyVaultContributor.id
+          identity: containerApplicationIdentity.id
         }
       ]
     }
@@ -444,21 +283,14 @@ resource setlistAgentpApp 'Microsoft.App/containerApps@2024-10-02-preview' = {
               name: 'PROJECT_ENDPOINT'
               value: project.properties.endpoints['AI Foundry API']
             }
-            {
-              name: 'SPOTIFY_MCP_URL_2'
-              value: 'https://${spotifyMcpApp.properties.configuration.ingress.fqdn}/sse'
-            }
-            {
-              name: 'SETLISTFM_MCP_URL_2'
-              value: 'https://${setlistfmMcpApp.properties.configuration.ingress.fqdn}/sse'
-            }
+
             {
               name: 'SPOTIFY_MCP_URL'
-              value: 'http://${spotifyMcpApp.name}/sse'
+              value: 'http://${spotifyMcpApp.outputs.containerAppName}/sse'
             }
             {
               name: 'SETLISTFM_MCP_URL'
-              value: 'http://${setlistfmMcpApp.name}/sse'
+              value: 'http://${setlistfmMcpApp.outputs.containerAppName}/sse'
             }
             {
               name: 'OAUTH_SPOTIFY_CLIENT_ID'
@@ -489,22 +321,17 @@ resource setlistAgentpApp 'Microsoft.App/containerApps@2024-10-02-preview' = {
       }
     }
   }
-  dependsOn: [
-    uaiRbacAcrPull
-    keyVaultContributorRoleAssignment
-  ]
 }
 
-// Assign the Key Vault Secrets Officer role to the managed identity
-resource keyVaultContributorRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
-  name: guid(kv.id, azrKeyVaultContributor.id, 'Key Vault Contributor Role')
+resource containerApplicationIdentityKeyVaultContributorRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
+  name: guid(kv.id, containerApplicationIdentity.id, 'Key Vault Contributor Role')
   scope: kv
   properties: {
     roleDefinitionId: subscriptionResourceId(
       'Microsoft.Authorization/roleDefinitions',
       '4633458b-17de-408a-b874-0445c86b69e6' // Key Vault Secrets Officer
     )
-    principalId: azrKeyVaultContributor.properties.principalId
+    principalId: containerApplicationIdentity.properties.principalId
   }
 }
 
@@ -613,7 +440,7 @@ param modelDeploymentsParameters array = [
   {
     name: '${rootname}-gpt-4.1-mini'
     model: 'gpt-4.1-mini'
-    capacity: 1
+    capacity: 1000
     deployment: 'GlobalStandard'
     version: '2025-04-14'
     format: 'OpenAI'
@@ -742,8 +569,8 @@ resource keyVaultSecretUserRoleAssignment 'Microsoft.Authorization/roleAssignmen
 }
 
 output AZURE_CONTAINER_REGISTRY_ENDPOINT string = acr.properties.loginServer
-output SPOTIFY_MCP_URL string = 'https://${spotifyMcpApp.properties.configuration.ingress.fqdn}/sse'
-output SETLISTFM_MCP_URL string = 'https://${setlistfmMcpApp.properties.configuration.ingress.fqdn}/sse'
+output SPOTIFY_MCP_URL string = 'https://${spotifyMcpApp.outputs.fqdn}/sse'
+output SETLISTFM_MCP_URL string = 'https://${setlistfmMcpApp.outputs.fqdn}/sse'
 output SETLIST_AGENT_URL string = 'https://${setlistAgentpApp.properties.configuration.ingress.fqdn}'
 
 output AZURE_OPENAI_ENDPOINT string = aiFoundry.properties.customSubDomainName
@@ -758,3 +585,19 @@ output MODEL_DEPLOYMENT_NAME string = modelDeploymentsParameters[0].name
 
 output APPLICATIONINSIGHTS_CONNECTION_STRING string = applicationInsights.outputs.connectionString
 output CHAINLIT_AUTH_SECRET string = chainlitAuthSecret
+
+module setlistfmMcpAppFetchLatestImage './modules/fetch-container-image.bicep' = {
+  name: 'setlistfm-mcp-fetch-image'
+  params: {
+    exists: isLatestImageExist
+    name: 'setlistfm-mcp'
+  }
+}
+
+module spotifyMcpAppFetchLatestImage './modules/fetch-container-image.bicep' = {
+  name: 'spotify-mcp-fetch-image'
+  params: {
+    exists: isLatestImageExist
+    name: 'spotify-mcp'
+  }
+}
