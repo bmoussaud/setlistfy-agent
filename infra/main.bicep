@@ -72,12 +72,6 @@ resource acr 'Microsoft.ContainerRegistry/registries@2023-01-01-preview' = {
   tags: tags
 }
 
-//#deprecated
-resource azrKeyVaultContributor 'Microsoft.ManagedIdentity/userAssignedIdentities@2018-11-30' = {
-  name: '${rootname}-keyvault-user'
-  location: location
-}
-
 @description('Creates an Azure Key Vault.')
 resource kv 'Microsoft.KeyVault/vaults@2024-04-01-preview' = {
   name: 'kv${uniqueString(rootname, resourceToken)}'
@@ -157,12 +151,12 @@ module setlistfmMcpApp 'modules/mcp-container-app.bicep' = {
     secrets: [
       {
         name: 'setlistfm-api-key'
-        keyVaultUrl: '${kv.properties.vaultUri}secrets/SETLISTFM-API-KEY'
+        keyVaultUrl: secretSetlistFMApiKey.properties.secretUri
         identity: containerApplicationIdentity.id
       }
       {
         name: 'applicationinsights-connectionstring'
-        keyVaultUrl: '${kv.properties.vaultUri}secrets/APPLICATIONINSIGHTS-CONNECTIONSTRING'
+        keyVaultUrl: secretAppInsightInstKey.properties.secretUri
         identity: containerApplicationIdentity.id
       }
     ]
@@ -188,11 +182,10 @@ module spotifyMcpApp 'modules/mcp-container-app.bicep' = {
     acrLoginServer: acr.properties.loginServer
     identityId: containerApplicationIdentity.id
     image: spotifyMcpAppFetchLatestImage.outputs.?containers[?0].?image ?? 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
-
     secrets: [
       {
         name: 'applicationinsights-connectionstring'
-        keyVaultUrl: '${kv.properties.vaultUri}secrets/APPLICATIONINSIGHTS-CONNECTIONSTRING'
+        keyVaultUrl: secretAppInsightInstKey.properties.secretUri
         identity: containerApplicationIdentity.id
       }
     ]
@@ -256,7 +249,7 @@ resource setlistAgentpApp 'Microsoft.App/containerApps@2024-10-02-preview' = {
 
         {
           name: 'applicationinsights-connectionstring'
-          keyVaultUrl: '${kv.properties.vaultUri}secrets/APPLICATIONINSIGHTS-CONNECTIONSTRING'
+          keyVaultUrl: secretAppInsightInstKey.properties.secretUri
           identity: containerApplicationIdentity.id
         }
       ]
