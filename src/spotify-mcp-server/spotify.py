@@ -20,6 +20,15 @@ from fastmcp.server.middleware import Middleware, MiddlewareContext
 from azure.monitor.opentelemetry import configure_azure_monitor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+from opentelemetry.instrumentation.starlette import StarletteInstrumentor
+from dotenv import load_dotenv
+from configuration import configure_telemetry, setup_logging, get_logger
+
+load_dotenv()
+logger = get_logger()
+setup_logging()  # Initialize logging configuration
+mcp = FastMCP("Spotify_MCP")
+configure_telemetry(mcp)
 
 
 def my_span(name: str):
@@ -60,48 +69,6 @@ def my_span(name: str):
                         raise
             return sync_wrapper
     return decorator
-
-
-def configure_telemetry(mcp: FastMCP):
-    """Configure OpenTelemetry for the application."""
-    # Configure Application Insights if connection string is available
-    logger.info("Configuring OpenTelemetry for SetlistFM MCP Server")
-    connection_string = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING")
-    if connection_string is None:
-        logger.warning(
-            "APPLICATIONINSIGHTS_CONNECTION_STRING not found, Application Insights not configured")
-        return
-
-    try:
-        configure_azure_monitor(connection_string=connection_string)
-        # Optionally, reduce verbosity of Azure SDK logs
-        logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(
-            logging.WARNING)
-        logger.info("Application Insights configured for SetlistFM MCP Server")
-    except Exception as e:
-        logger.warning(
-            f"Failed to configure Application Insights (configure_azure_monitor): {e}", exc_info=True)
-
-    # Instrument HTTP clients
-    try:
-        logger.info(
-            "Instrumenting HTTP clients for OpenTelemetry RequestsInstrumentor")
-        RequestsInstrumentor().instrument()
-        logger.info(
-            "Instrumenting HTTP clients for OpenTelemetry HTTPXClientInstrumentor")
-        HTTPXClientInstrumentor().instrument()
-
-        logger.info(
-            "OpenTelemetry instrumentation configured for SetlistFM MCP Server")
-    except Exception as e:
-        logger.warning(
-            f"Failed to configure OpenTelemetry instrumentation: {e}")
-
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 
 class LoggingMiddleware(Middleware):
@@ -160,20 +127,8 @@ Exposes Spotify API endpoints via Spotipy and FastMCP.
 
 
 # Configure logger to show all messages (DEBUG and above) with a clear format, even under Gunicorn
-logger = logging.getLogger("spotify_mcp_server")
-logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler()
-formatter = logging.Formatter(
-    "%(asctime)s [%(levelname)s] %(name)s: %(message)s")
-handler.setFormatter(formatter)
-# Always add our handler (Gunicorn may pre-configure handlers, so forcibly add ours)
-logger.handlers = []
-logger.addHandler(handler)
-logger.propagate = False
 
 
-mcp = FastMCP("Spotify_MCP")
-configure_telemetry(mcp)
 # mcp.add_middleware(LoggingMiddleware())
 
 

@@ -47,7 +47,8 @@ class EnhancedSetlistAgent:
         self.plugin_spotify = None
 
         # Setup telemetry and logging
-        enable_telemetry(log_to_project=True)
+        logger.info("Setting up telemetry and logging...SKIIIIIIP")
+        # enable_telemetry(log_to_project=True)
         logging.getLogger("kernel").setLevel(logging.DEBUG)
 
         # Validate required environment variables
@@ -112,8 +113,11 @@ class EnhancedSetlistAgent:
 
     async def _configure_telemetry(self):
 
+        logger = logging.getLogger(__name__)
         # Configure Application Insights if connection string is available
         connection_string = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING")
+        logger.info("Configuring telemetry for Enhanced SetlistAgent...%s",
+                    connection_string or "No connection string provided")
         if connection_string:
             # Configure Application Insights with the connection string
             try:
