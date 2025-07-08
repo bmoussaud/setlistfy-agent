@@ -5,7 +5,7 @@ from azure.monitor.opentelemetry import configure_azure_monitor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.instrumentation.openai import OpenAIInstrumentor
-# from opentelemetry.instrumentation.asyncio import AsyncioInstrumentorc
+from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
 import os
 import asyncio
 import logging
@@ -140,7 +140,7 @@ class EnhancedSetlistAgent:
                     OpenAIInstrumentor().instrument()
                     RequestsInstrumentor().instrument()
                     HTTPXClientInstrumentor().instrument()
-                    # AsyncioInstrumentor().instrument()
+                    AsyncioInstrumentor().instrument()
                     logger.info(
                         "OpenTelemetry instrumentation configured for Setlist Agent")
                 except Exception as e:
