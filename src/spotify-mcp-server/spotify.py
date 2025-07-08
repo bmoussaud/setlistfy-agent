@@ -12,15 +12,12 @@ import logging
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from fastmcp import FastMCP, Context
+from fastmcp import FastMCP
 from fastmcp.server.dependencies import get_http_request
 from fastmcp.server.middleware import Middleware, MiddlewareContext
 
 # Application Insights configuration
-from azure.monitor.opentelemetry import configure_azure_monitor
-from opentelemetry.instrumentation.requests import RequestsInstrumentor
-from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
-from opentelemetry.instrumentation.starlette import StarletteInstrumentor
+
 from dotenv import load_dotenv
 from configuration import configure_telemetry, setup_logging, get_logger
 

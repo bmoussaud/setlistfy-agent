@@ -1,3 +1,4 @@
+
 from dotenv import load_dotenv
 import httpx
 from fastmcp import FastMCP
@@ -5,8 +6,7 @@ import json
 import logging
 import os
 
-from configuration import configure_telemetry
-
+from configuration import configure_telemetry, Telemetry
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -18,6 +18,7 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 load_dotenv()
+
 
 # Create an HTTP client for your API
 headers = {
@@ -37,8 +38,26 @@ mcp = FastMCP.from_openapi(
     client=client,
     name="Setlist.fm MCP Server",
     version="1.0.0",
+    mcp_names={
+        "resource__1.0_artist__mbid__getArtist_GET": "getArtist",
+        "resource__1.0_artist__mbid__setlists_getArtistSetlists_GET": "getArtistSetlists",
+        "resource__1.0_city__geoId__getCity_GET": "getCity",
+        "resource__1.0_search_artists_getArtists_GET": "getArtists",
+        "resource__1.0_search_cities_getCities_GET": "getCities",
+        "resource__1.0_search_countries_getCountries_GET": "getCountries",
+        "resource__1.0_search_setlists_getSetlists_GET": "getSetlists",
+        "resource__1.0_search_venues_getVenues_GET": "getVenues",
+        "resource__1.0_setlist_version__versionId__getSetlistVersion_GET": "getSetlistVersion",
+        "resource__1.0_setlist__setlistId__getSetlist_GET": "getSetlist",
+        "resource__1.0_user__userId__getUser_GET": "getUser",
+        "resource__1.0_user__userId__attended_getUserAttendedSetlists_GET": "getUserAttendedSetlists",
+        "resource__1.0_user__userId__edited_getUserEditedSetlists_GET": "getUserEditedSetlists",
+        "resource__1.0_venue__venueId__getVenue_GET": "getVenue",
+        "resource__1.0_venue__venueId__setlists_getVenueSetlists_GET": "getVenueSetlists",
+    }
 )
 configure_telemetry()
+mcp.add_middleware(Telemetry())
 
 if __name__ == "__main__":
     uvicorn_config = {
@@ -47,7 +66,7 @@ if __name__ == "__main__":
     mcp.run(
         transport="sse",
         host="127.0.0.1",
-        port=9000,
+        port=9001,
         log_level="debug",
         uvicorn_config=uvicorn_config
     )
