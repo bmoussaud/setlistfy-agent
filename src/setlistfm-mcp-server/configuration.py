@@ -40,7 +40,7 @@ class Telemetry(Middleware):
             tool_args = {}
 
         tracer = trace.get_tracer(__name__)
-        with tracer.start_as_current_span(f"Setlistfm_MCP_{tool_name}") as span:
+        with tracer.start_as_current_span(f"setlistfm_mcp_{tool_name}") as span:
             span.set_attribute("tool.name", tool_name)
             for key, value in tool_args.items():
                 span.set_attribute(f"tool.args.{key}", value)
