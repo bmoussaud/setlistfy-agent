@@ -125,11 +125,13 @@ async def oauth_callback(
     token: str,
     raw_user_data: Dict[str, str],
     default_user: cl.User,
+    redirect_uri: Optional[str] = None,
 ) -> Optional[cl.User]:
     """Handle OAuth callback for Spotify authentication."""
     logger.error(f"OAuth callback received for provider: {provider_id}")
     logger.error(f"Token: {token}")
     logger.error(f"Raw user data: {raw_user_data}")
+    logger.error(f"redirect_uri: {redirect_uri}")
     logger.error(f"Default user: {default_user}")
     # https://spotify.server.open-mcp.org/latest/mcp?FORWARD_VAR_OPEN_MCP_BASE_URL=https%3A%2F%2Fapi.example.com&&OAUTH2_TOKEN=BQB2YyM7D2bqSe5A1kQ2KXW6mhvAFvZiXSWmsZ0rujLS_QNb3Veg8i9uVAKD5ugR4_LdLXnfpa4mn7SI24PSJx_oD4GEXw4Gad1rNdzXAW_mZONprhaaVpbb-kmktlgLW2p51If80ZwzhwF7AFZBJ78SMcb0aIr_CRNYBTSzEXaZuM_5YAPix_DYUn6GiFrAHADnAIxhEqYpms5OXx2jHwCOZ9Z8-J4VRi8X_vgk2mkLU1hMSnvYJA9G9txIO2pFKx_LeUMVCJouF8Y46oB1bRJ4mIhyoLlcvX19U6N4AWpd4JBhEZ7yZcOUAMVOJA
     if provider_id == "spotify":

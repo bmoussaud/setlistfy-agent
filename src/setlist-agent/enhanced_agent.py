@@ -13,6 +13,7 @@ import sys
 from opentelemetry import trace
 import semantic_kernel as sk
 from dotenv import load_dotenv
+from azure.identity import ManagedIdentityCredential
 from semantic_kernel.utils.logging import setup_logging
 from semantic_kernel.connectors.ai.function_choice_behavior import FunctionChoiceBehavior
 from semantic_kernel.contents.chat_history import ChatHistory
@@ -114,42 +115,71 @@ class EnhancedSetlistAgent:
     async def _configure_telemetry(self):
 
         logger = logging.getLogger(__name__)
+        logger.info("Configuring telemetry for Enhanced SetlistAgent...")
+        try:
+            endpoint = os.environ["PROJECT_ENDPOINT"]
+        except KeyError:
+            logger.error("PROJECT_ENDPOINT environment variable is not set.")
+            return
+        logger.info("Project Endpoint: %s", endpoint)
         # Configure Application Insights if connection string is available
-        connection_string = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING")
-        logger.info("Configuring telemetry for Enhanced SetlistAgent...%s",
-                    connection_string or "No connection string provided")
-        if connection_string:
-            # Configure Application Insights with the connection string
-            try:
-                logger = logging.getLogger(__name__)
-                logger.info("Enabling logging of message contents...")
-                os.environ["AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED"] = "true"
-                logger.info(f"configure azure monitor {connection_string}")
-                configure_azure_monitor(connection_string=connection_string)
+        from azure.identity import DefaultAzureCredential
+        managed_identity = os.environ["AZURE_CLIENT_ID"]
+        logger.info(
+            f"Using managed identity client ID: {managed_identity} for Azure services")
+        with DefaultAzureCredential() as credential:
+            logger.info(f"Using {type(credential)} for Azure services")
+            from azure.ai.projects import AIProjectClient
+            with AIProjectClient(endpoint=endpoint, credential=credential) as project_client:
                 logger.info(
-                    "Application Insights configured for Setlist Agent")
-            except Exception as e:
-                logger = logging.getLogger(__name__)
-                logger.warning(
-                    f"Failed to configure Application Insights (configure_azure_monitor): {e}", exc_info=True)
+                    "Retrieving Application Insights connection string...")
+                connection_string = project_client.telemetry.get_connection_string()
+                if connection_string:
+                    logger.info(
+                        "Application Insights connection string retrieved successfully.")
+                else:
+                    logger.warning(
+                        "No Application Insights connection string found in project telemetry.")
+
+                # connection_string = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING")
+                logger.info("Configuring telemetry for Enhanced SetlistAgent...%s",
+                            connection_string or "No connection string provided")
+                if connection_string:
+                    # Configure Application Insights with the connection string
+                    try:
+                        logger.info("Enabling logging of message contents...")
+                        os.environ["AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED"] = "true"
+                        logger.info(
+                            f"configure azure monitor {connection_string}")
+                        configure_azure_monitor(connection_string=connection_string,  instrumentation_options={
+                            "azure_sdk": {"enabled": True},
+                            "django": {"enabled": True},
+                            "fastapi": {"enabled": False},
+                            "flask": {"enabled": True},
+                            "psycopg2": {"enabled": False},
+                            "requests": {"enabled": True},
+                            "urllib": {"enabled": True},
+                            "urllib3": {"enabled": True},
+                        })
+                        logger.info(
+                            "Application Insights configured for Setlist Agent")
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to configure Application Insights (configure_azure_monitor): {e}", exc_info=True)
 
             # Instrument HTTP clients and FastAPI
-            if os.getenv("AZURE_MONITOR_OPENTELEMETRY_ENABLED") == "true":
-                try:
-                    logger.info("*** Instrumenting HTTP clients and HTTPX")
-                    OpenAIInstrumentor().instrument()
-                    RequestsInstrumentor().instrument()
-                    HTTPXClientInstrumentor().instrument()
-                    AsyncioInstrumentor().instrument()
-                    logger.info(
-                        "OpenTelemetry instrumentation configured for Setlist Agent")
-                except Exception as e:
-                    logger.warning(
-                        f"Failed to configure OpenTelemetry instrumentation: {e}")
-        else:
-            logger = logging.getLogger(__name__)
-            logger.warning(
-                "APPLICATIONINSIGHTS_CONNECTION_STRING not found, Application Insights not configured")
+        if os.getenv("AZURE_MONITOR_OPENTELEMETRY_ENABLED") == "true":
+            try:
+                logger.info("*** Instrumenting HTTP clients and HTTPX")
+                OpenAIInstrumentor().instrument()
+                RequestsInstrumentor().instrument()
+                HTTPXClientInstrumentor().instrument()
+                AsyncioInstrumentor().instrument()
+                logger.info(
+                    "OpenTelemetry instrumentation configured for Setlist Agent")
+            except Exception as e:
+                logger.warning(
+                    f"Failed to configure OpenTelemetry instrumentation: {e}")
 
     async def setup_setlistfm_plugin(self):
         """Setup Setlist FM plugin."""

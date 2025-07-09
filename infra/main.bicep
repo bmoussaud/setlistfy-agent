@@ -271,6 +271,14 @@ module setlistAgentpApp 'modules/mcp-container-app.bicep' = {
         name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
         secretRef: 'applicationinsights-connectionstring'
       }
+      {
+        name: 'AZURE_CLIENT_ID'
+        value: containerApplicationIdentity.properties.clientId
+      }
+      {
+        name: 'AZURE_LOG_LEVEL' // To display the missing permissions in the logs
+        value: 'DEBUG'
+      }
     ]
   }
 }
@@ -374,6 +382,19 @@ resource aiFoundry 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
   }
 }
 
+resource aiFoundryRoleAssignmentOnContainerApplicationIdentity 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
+  name: guid(aiFoundry.id, containerApplicationIdentity.id, 'AI Foundry Azure AI User role')
+  scope: aiFoundry
+  properties: {
+    roleDefinitionId: subscriptionResourceId(
+      'Microsoft.Authorization/roleDefinitions',
+      '53ca6127-db72-4b80-b1b0-d745d6d5456d' // Azure AI User
+    )
+    //Principal ID of the current user
+    principalId: containerApplicationIdentity.properties.principalId
+  }
+}
+
 resource project 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-preview' = {
   parent: aiFoundry
   name: '${rootname}-project-${aiFoundryLocation}'
@@ -384,6 +405,20 @@ resource project 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-previ
   }
   identity: {
     type: 'SystemAssigned'
+  }
+}
+
+//https://learn.microsoft.com/en-us/azure/ai-foundry/concepts/rbac-azure-ai-foundry?pivots=fdp-project#azure-ai-account-owner
+resource aiFoundryProjectRoleAssignmentOnContainerApplicationIdentity 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
+  name: guid(project.id, containerApplicationIdentity.id, 'AI Foundry Project Azure AI User role')
+  scope: project
+  properties: {
+    roleDefinitionId: subscriptionResourceId(
+      'Microsoft.Authorization/roleDefinitions',
+      '53ca6127-db72-4b80-b1b0-d745d6d5456d' // Azure AI User
+    )
+    //Principal ID of the current user
+    principalId: containerApplicationIdentity.properties.principalId
   }
 }
 
@@ -488,6 +523,7 @@ module setlistfmapi 'modules/api.bicep' = {
   }
   dependsOn: [
     secretSetlistFMApiKey
+    setlistFmNvApiKey
     keyVaultSecretUserRoleAssignment
   ]
 }
@@ -504,6 +540,7 @@ module setlistFmNvApiKey 'modules/nvkv.bicep' = {
     keyVaultSecretUserRoleAssignment //this role assignment is needed to allow the API Management service to access the Key Vault
   ]
 }
+
 @description('This is the built-in Key Vault Secrets Officer role. See https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles/security#key-vault-secrets-user')
 resource keyVaultSecretsUserRoleDefinition 'Microsoft.Authorization/roleDefinitions@2018-01-01-preview' existing = {
   scope: subscription()

@@ -23,7 +23,7 @@ resource keyVaultSecretsUserRoleDefinition 'Microsoft.Authorization/roleDefiniti
 //https://praveenkumarsreeram.com/2024/12/12/introducing-az-deployer-objectid-in-bicep-track-object-principle-id-of-user-managed-identity/
 //https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/bicep-functions-deployment#deployer
 //Not implemented yet in AZD https://github.com/Azure/azure-dev/issues/4620
-@description('Assigns the API Management service the role to browse and read the keys of the Key Vault to the deployer')
+@description('Assigns the Deployer  the role to browse and read the keys of the Key Vault to the deployer')
 //seful to check information about the KN in the Azure portal 
 resource keyVaultSecretUserRoleAssignmentOnDeployer 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
   name: guid(kv.id, 'Deployer', keyVaultSecretsUserRoleDefinition.id)
