@@ -22,7 +22,6 @@ from semantic_kernel.connectors.ai.azure_ai_inference import AzureAIInferenceCha
 from semantic_kernel.connectors.mcp import MCPSsePlugin
 from semantic_kernel.functions import KernelArguments
 
-from config import enable_telemetry
 from spotify_auth import SpotifyAuthManager, spotify_auth
 import chainlit as cl
 from opentelemetry import trace
@@ -46,10 +45,6 @@ class EnhancedSetlistAgent:
         self._agent = None
         self.plugin_setlistfm = None
         self.plugin_spotify = None
-
-        # Setup telemetry and logging
-        logger.info("Setting up telemetry and logging...SKIIIIIIP")
-        # enable_telemetry(log_to_project=True)
         logging.getLogger("kernel").setLevel(logging.DEBUG)
 
         # Validate required environment variables
