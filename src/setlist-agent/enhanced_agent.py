@@ -6,11 +6,18 @@ from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.instrumentation.openai import OpenAIInstrumentor
 from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
+from opentelemetry.propagate import set_global_textmap
+from opentelemetry.propagators.composite import CompositeHTTPPropagator
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
+from opentelemetry.baggage.propagation import W3CBaggagePropagator
+from opentelemetry.context import attach, detach
 import os
 import asyncio
 import logging
 import sys
-from opentelemetry import trace
+import uuid
+from typing import Dict, Any
+from opentelemetry import trace, context, baggage
 import semantic_kernel as sk
 from dotenv import load_dotenv
 from azure.identity import ManagedIdentityCredential
@@ -38,14 +45,18 @@ if not logger.hasHandlers():
 
 
 class EnhancedSetlistAgent:
-    """Enhanced Setlist Agent with Spotify OAuth integration."""
+    """Enhanced Setlist Agent with Spotify OAuth integration and distributed tracing."""
 
     def __init__(self):
         self._kernel = sk.Kernel()
         self._agent = None
         self.plugin_setlistfm = None
         self.plugin_spotify = None
+        self._correlation_id = None
         logging.getLogger("kernel").setLevel(logging.DEBUG)
+
+        # Configure OpenTelemetry propagators for distributed tracing
+        self._setup_propagators()
 
         # Validate required environment variables
         required_vars = [
@@ -68,15 +79,74 @@ class EnhancedSetlistAgent:
         )
         self._kernel.add_service(ai_inference_service)
 
+    def _setup_propagators(self):
+        """Set up OpenTelemetry propagators for distributed tracing."""
+        # Set up composite propagator with trace context and baggage
+        propagator = CompositeHTTPPropagator([
+            TraceContextTextMapPropagator(),
+            W3CBaggagePropagator(),
+        ])
+        set_global_textmap(propagator)
+        logger.info(
+            "OpenTelemetry propagators configured for distributed tracing")
+
+    def _generate_correlation_id(self) -> str:
+        """Generate a unique correlation ID for this session."""
+        return str(uuid.uuid4())
+
+    def _inject_trace_context(self, headers: Dict[str, str]) -> Dict[str, str]:
+        """Inject trace context into HTTP headers for distributed tracing."""
+        # Create a copy of headers to avoid modifying the original
+        injected_headers = headers.copy()
+
+        # Get current trace context
+        current_context = context.get_current()
+
+        # Use the global propagator to inject trace context
+        from opentelemetry.propagate import get_global_textmap
+        propagator = get_global_textmap()
+
+        # Inject trace context into headers - use carrier as dict directly
+        try:
+            propagator.inject(injected_headers, context=current_context)
+        except Exception as e:
+            logger.warning(f"Failed to inject trace context: {e}")
+
+        # Add correlation ID as baggage
+        if self._correlation_id:
+            try:
+                baggage_context = baggage.set_baggage(
+                    "correlation_id", self._correlation_id, current_context)
+                propagator.inject(injected_headers, context=baggage_context)
+            except Exception as e:
+                logger.warning(f"Failed to inject baggage: {e}")
+
+        logger.debug(
+            f"Injected trace context into headers: {injected_headers}")
+        return injected_headers
+
     def span(self, name: str):
         """Create a span for tracing."""
         tracer = trace.get_tracer(__name__)
         self._calls += 1
-        return tracer.start_as_current_span(name=f"{name} {self._thread.id} / {self._calls}")
+        span = tracer.start_as_current_span(
+            name=f"{name} {self._thread.id} / {self._calls}")
+
+        # Set correlation ID as span attribute
+        if self._correlation_id:
+            if hasattr(span, 'set_attribute'):
+                span.set_attribute("correlation_id", self._correlation_id)
+
+        return span
 
     async def initialize_agent(self):
         """Initialize the agent with necessary plugins and services."""
         logger.info("Initializing Enhanced SetlistAgent with plugins...")
+
+        # Generate correlation ID for this session
+        self._correlation_id = self._generate_correlation_id()
+        logger.info(f"Generated correlation ID: {self._correlation_id}")
+
         # Register Setlist FM MCP plugin
         await self.setup_setlistfm_plugin()
         await self._configure_telemetry()
@@ -177,7 +247,7 @@ class EnhancedSetlistAgent:
                     f"Failed to configure OpenTelemetry instrumentation: {e}")
 
     async def setup_setlistfm_plugin(self):
-        """Setup Setlist FM plugin."""
+        """Setup Setlist FM plugin with trace context injection."""
         logger.info("Setting up Setlist FM plugin...")
 
         setlistfm_mcp_url = os.getenv("SETLISTFM_MCP_URL")
@@ -185,11 +255,22 @@ class EnhancedSetlistAgent:
             logger.error("SETLISTFM_MCP_URL environment variable is not set.")
             raise ValueError(
                 "SETLISTFM_MCP_URL must be set in environment variables.")
+
+        # Prepare headers with trace context
+        headers = {}
+        if self._correlation_id:
+            headers["x-correlation-id"] = self._correlation_id
+
+        # Inject OpenTelemetry trace context into headers
+        headers = self._inject_trace_context(headers)
+        logger.info(
+            f"Connecting to Setlist FM MCP at {setlistfm_mcp_url} with headers: {headers}")
         try:
             self.plugin_setlistfm = MCPSsePlugin(
                 name="setlistfm_mcp_client",
                 description="Setlist FM Plugin for concert and setlist data",
-                url=setlistfm_mcp_url
+                url=setlistfm_mcp_url,
+                headers=headers
             )
             await self.plugin_setlistfm.connect()
             self._kernel.add_plugin(self.plugin_setlistfm)
@@ -199,7 +280,7 @@ class EnhancedSetlistAgent:
             raise RuntimeError(f"Failed to connect Setlist FM plugin: {e}")
 
     async def _setup_spotify_plugin(self, access_token: str, refresh_token: str, expires_at: int):
-        """Setup Spotify plugin with appropriate authentication."""
+        """Setup Spotify plugin with appropriate authentication and trace context."""
         logger.info("Setting up Spotify plugin with authentication...")
 
         spotify_mcp_url = os.getenv("SPOTIFY_MCP_URL")
@@ -207,16 +288,23 @@ class EnhancedSetlistAgent:
             logger.error("SPOTIFY_MCP_URL environment variable is not set.")
             raise ValueError(
                 "SPOTIFY_MCP_URL must be set in environment variables.")
+
+        # Prepare headers with authentication
         headers = {}
         headers["Authorization"] = f"Bearer {access_token}"
         headers["X-Spotify-Token"] = access_token
+
+        # Add correlation ID
+        if self._correlation_id:
+            headers["x-correlation-id"] = self._correlation_id
+
+        # Inject OpenTelemetry trace context into headers
+        headers = self._inject_trace_context(headers)
+
         logger.info(
             f"Using Chainlit OAuth token for Spotify MCP {access_token}")
-
-        # await spotify_auth.refresh_token()
-
         logger.info(
-            f"Connecting to Spotify MCP at {spotify_mcp_url} with headers: {headers}")
+            f"Connecting to Spotify MCP at {spotify_mcp_url}, headers: {headers}")
 
         self.plugin_spotify = MCPSsePlugin(
             name="spotify_mcp_client",
@@ -308,15 +396,36 @@ class EnhancedSetlistAgent:
             return await self._handle_command(user_input)
 
         tracer = trace.get_tracer(__name__)
-        with tracer.start_as_current_span(name="enhanced-agent-chat"):
+        # Create root span with correlation ID for this chat session
+        with tracer.start_as_current_span(name="enhanced-agent-chat") as root_span:
+            # Set attributes for the root span
+            root_span.set_attribute("service.name", "setlist-agent")
+            # Truncate for safety
+            root_span.set_attribute("user.input", user_input[:100])
+            if self._correlation_id:
+                root_span.set_attribute("correlation_id", self._correlation_id)
+
             try:
-                joined_response = []
-                async for response in self._agent.invoke(messages=user_input, thread=thread):
-                    logger.info(f"chat response: {response.to_dict()}")
-                    joined_response.append(str(response.content))
-                return "\n".join(joined_response)
+                # Ensure the context is properly set for child spans
+                current_context = context.get_current()
+                token = context.attach(current_context)
+
+                try:
+                    joined_response = []
+                    async for response in self._agent.invoke(messages=user_input, thread=thread):
+                        logger.info(f"chat response: {response.to_dict()}")
+                        joined_response.append(str(response.content))
+
+                    root_span.set_status(trace.Status(trace.StatusCode.OK))
+                    return "\n".join(joined_response)
+                finally:
+                    context.detach(token)
+
             except Exception as e:
                 logger.error(f"Error in chat processing: {e}")
+                root_span.set_status(trace.Status(
+                    trace.StatusCode.ERROR, str(e)))
+                root_span.record_exception(e)
                 return f"I encountered an error: {str(e)}"
 
     async def _handle_command(self, command: str) -> str:

@@ -23,6 +23,8 @@ dependencies = [
     "opentelemetry-instrumentation-httpx",
     "opentelemetry-instrumentation-openai",
     "opentelemetry-instrumentation-asyncio",
+    "opentelemetry-propagator-b3",
+    "opentelemetry-propagator-jaeger",
     "azure-core-tracing-opentelemetry",
     "chainlit",
     "spotipy",

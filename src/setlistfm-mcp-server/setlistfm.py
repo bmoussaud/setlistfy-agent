@@ -1,6 +1,6 @@
 from functools import wraps
 import asyncio
-from opentelemetry import trace
+from opentelemetry import trace, context, baggage
 import logging
 import os
 import json
@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 from starlette.responses import JSONResponse
 from starlette.requests import Request
 
-from configuration import configure_telemetry
+from configuration import configure_telemetry, extract_trace_context
 load_dotenv()
 
 
@@ -27,20 +27,52 @@ logger.addHandler(handler)
 
 def my_span(name: str):
     """
-    Decorator to create a span for OpenTelemetry tracing.
+    Decorator to create a span for OpenTelemetry tracing with trace context support.
     Works with both sync and async functions.
     """
     def decorator(func):
         if asyncio.iscoroutinefunction(func):
             @wraps(func)
             async def async_wrapper(*args, **kwargs):
+                # Extract trace context from request headers
+                extracted_context, correlation_id = None, None
+                try:
+                    # In FastMCP, we need to get the request context differently
+                    # This is a simplified approach - in a real implementation,
+                    # you might need to pass the request context through the middleware
+                    from fastmcp.server.dependencies import get_http_request
+                    request: Request = get_http_request()
+                    if request:
+                        headers = dict(request.headers)
+                        extracted_context, correlation_id = extract_trace_context(
+                            headers)
+                except Exception as e:
+                    logger.debug(f"Could not extract trace context: {e}")
+
                 tracer = trace.get_tracer(__name__)
-                # Start a new span for the async function
-                with tracer.start_as_current_span(f"setlistfm_mcp_{name}") as span:
+                span_context = extracted_context if extracted_context else context.get_current()
+
+                # Start a new span with the extracted context
+                with tracer.start_as_current_span(f"setlistfm_mcp_{name}", context=span_context) as span:
+                    span.set_attribute("service.name", "setlistfm-mcp-server")
+
+                    # Set correlation ID if available
+                    if correlation_id:
+                        span.set_attribute("correlation_id", correlation_id)
+                        logger.info(
+                            f"Processing {name} with correlation_id: {correlation_id}")
+
                     try:
-                        result = await func(*args, **kwargs)
-                        span.set_status(trace.Status(trace.StatusCode.OK))
-                        return result
+                        # Attach the extracted context for the duration of the call
+                        token = context.attach(
+                            span_context) if extracted_context else None
+                        try:
+                            result = await func(*args, **kwargs)
+                            span.set_status(trace.Status(trace.StatusCode.OK))
+                            return result
+                        finally:
+                            if token:
+                                context.detach(token)
                     except Exception as e:
                         span.set_status(trace.Status(
                             trace.StatusCode.ERROR, str(e)))
@@ -50,12 +82,41 @@ def my_span(name: str):
         else:
             @wraps(func)
             def sync_wrapper(*args, **kwargs):
+                # Extract trace context from request headers
+                extracted_context, correlation_id = None, None
+                try:
+                    from fastmcp.server.dependencies import get_http_request
+                    request: Request = get_http_request()
+                    if request:
+                        headers = dict(request.headers)
+                        extracted_context, correlation_id = extract_trace_context(
+                            headers)
+                except Exception as e:
+                    logger.debug(f"Could not extract trace context: {e}")
+
                 tracer = trace.get_tracer(__name__)
-                with tracer.start_as_current_span(f"setlistfm_mcp_{name}") as span:
+                span_context = extracted_context if extracted_context else context.get_current()
+
+                with tracer.start_as_current_span(f"setlistfm_mcp_{name}", context=span_context) as span:
+                    span.set_attribute("service.name", "setlistfm-mcp-server")
+
+                    # Set correlation ID if available
+                    if correlation_id:
+                        span.set_attribute("correlation_id", correlation_id)
+                        logger.info(
+                            f"Processing {name} with correlation_id: {correlation_id}")
+
                     try:
-                        result = func(*args, **kwargs)
-                        span.set_status(trace.Status(trace.StatusCode.OK))
-                        return result
+                        # Attach the extracted context for the duration of the call
+                        token = context.attach(
+                            span_context) if extracted_context else None
+                        try:
+                            result = func(*args, **kwargs)
+                            span.set_status(trace.Status(trace.StatusCode.OK))
+                            return result
+                        finally:
+                            if token:
+                                context.detach(token)
                     except Exception as e:
                         span.set_status(trace.Status(
                             trace.StatusCode.ERROR, str(e)))

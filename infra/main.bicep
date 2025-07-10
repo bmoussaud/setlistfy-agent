@@ -575,3 +575,5 @@ output MODEL_DEPLOYMENT_NAME string = modelDeploymentsParameters[0].name
 output APPLICATIONINSIGHTS_CONNECTION_STRING string = applicationInsights.outputs.connectionString
 
 output CHAINLIT_AUTH_SECRET string = chainlitAuthSecret
+output AZURE_CLIENT_ID string = containerApplicationIdentity.properties.clientId
+output AZURE_LOG_LEVEL string = 'DEBUG'

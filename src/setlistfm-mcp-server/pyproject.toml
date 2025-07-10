@@ -12,6 +12,9 @@ dependencies = [
     "opentelemetry-instrumentation-httpx",
     "opentelemetry-instrumentation-fastapi",
     "opentelemetry-instrumentation-starlette",
+    "opentelemetry-instrumentation-requests",
+    "opentelemetry-propagator-b3",
+    "opentelemetry-propagator-jaeger",
     "pytest",
     "pytest-asyncio",
     "python-dotenv"

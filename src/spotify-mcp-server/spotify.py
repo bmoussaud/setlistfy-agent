@@ -1,6 +1,6 @@
 from functools import wraps
 import asyncio
-from opentelemetry import trace
+from opentelemetry import trace, context, baggage
 import json
 from fastmcp import FastMCP
 import os
@@ -19,7 +19,7 @@ from fastmcp.server.middleware import Middleware, MiddlewareContext
 # Application Insights configuration
 
 from dotenv import load_dotenv
-from configuration import configure_telemetry, setup_logging, get_logger
+from configuration import configure_telemetry, setup_logging, get_logger, extract_trace_context
 
 load_dotenv()
 logger = get_logger()
@@ -30,38 +30,123 @@ configure_telemetry(mcp)
 
 def my_span(name: str):
     """
-    Decorator to create a span for OpenTelemetry tracing.
+    Decorator to create a span for OpenTelemetry tracing with proper parent-child relationships.
     Works with both sync and async functions.
     """
     def decorator(func):
         if asyncio.iscoroutinefunction(func):
             @wraps(func)
             async def async_wrapper(*args, **kwargs):
+                # Extract trace context from request headers
+                extracted_context, correlation_id = None, None
+                try:
+                    request: Request = get_http_request()
+                    if request:
+                        headers = dict(request.headers)
+                        extracted_context, correlation_id = extract_trace_context(
+                            headers)
+                        logger.debug(
+                            f"Extracted context for {name}: {extracted_context is not None}")
+                except Exception as e:
+                    logger.debug(f"Could not extract trace context: {e}")
+
                 tracer = trace.get_tracer(__name__)
-                # Start a new span for the async function
-                with tracer.start_as_current_span(name) as span:
+                # Use extracted context to maintain parent-child relationship
+                span_context = extracted_context if extracted_context else context.get_current()
+
+                # Start a new span with the extracted context - this creates proper parent-child link
+                with tracer.start_as_current_span(f"spotify_mcp_{name}", context=span_context) as span:
+                    # Set standard attributes
+                    span.set_attribute("service.name", "spotify-mcp-server")
+                    span.set_attribute("operation.name", name)
+
+                    # Set correlation ID if available
+                    if correlation_id:
+                        span.set_attribute(
+                            "correlation_id", str(correlation_id))
+                        logger.info(
+                            f"Processing {name} with correlation_id: {correlation_id}")
+
+                    # Log trace information for debugging
+                    current_span_context = span.get_span_context()
+                    logger.debug(
+                        f"Created span for {name} - trace_id: {current_span_context.trace_id}, span_id: {current_span_context.span_id}")
+
                     try:
-                        result = await func(*args, **kwargs)
-                        span.set_status(trace.Status(trace.StatusCode.OK))
-                        return result
+                        # Attach the extracted context for the duration of the call
+                        # This ensures child operations use the correct context
+                        token = context.attach(
+                            span_context) if extracted_context else None
+                        try:
+                            result = await func(*args, **kwargs)
+                            span.set_status(trace.Status(trace.StatusCode.OK))
+                            span.set_attribute("operation.result", "success")
+                            return result
+                        finally:
+                            if token:
+                                context.detach(token)
                     except Exception as e:
                         span.set_status(trace.Status(
                             trace.StatusCode.ERROR, str(e)))
+                        span.set_attribute("operation.result", "error")
+                        span.set_attribute("error.message", str(e))
                         span.record_exception(e)
                         raise
             return async_wrapper
         else:
             @wraps(func)
             def sync_wrapper(*args, **kwargs):
+                # Extract trace context from request headers
+                extracted_context, correlation_id = None, None
+                try:
+                    request: Request = get_http_request()
+                    if request:
+                        headers = dict(request.headers)
+                        extracted_context, correlation_id = extract_trace_context(
+                            headers)
+                        logger.debug(
+                            f"Extracted context for {name}: {extracted_context is not None}")
+                except Exception as e:
+                    logger.debug(f"Could not extract trace context: {e}")
+
                 tracer = trace.get_tracer(__name__)
-                with tracer.start_as_current_span(name) as span:
+                # Use extracted context to maintain parent-child relationship
+                span_context = extracted_context if extracted_context else context.get_current()
+
+                with tracer.start_as_current_span(f"spotify_mcp_{name}", context=span_context) as span:
+                    # Set standard attributes
+                    span.set_attribute("service.name", "spotify-mcp-server")
+                    span.set_attribute("operation.name", name)
+
+                    # Set correlation ID if available
+                    if correlation_id:
+                        span.set_attribute(
+                            "correlation_id", str(correlation_id))
+                        logger.info(
+                            f"Processing {name} with correlation_id: {correlation_id}")
+
+                    # Log trace information for debugging
+                    current_span_context = span.get_span_context()
+                    logger.debug(
+                        f"Created span for {name} - trace_id: {current_span_context.trace_id}, span_id: {current_span_context.span_id}")
+
                     try:
-                        result = func(*args, **kwargs)
-                        span.set_status(trace.Status(trace.StatusCode.OK))
-                        return result
+                        # Attach the extracted context for the duration of the call
+                        token = context.attach(
+                            span_context) if extracted_context else None
+                        try:
+                            result = func(*args, **kwargs)
+                            span.set_status(trace.Status(trace.StatusCode.OK))
+                            span.set_attribute("operation.result", "success")
+                            return result
+                        finally:
+                            if token:
+                                context.detach(token)
                     except Exception as e:
                         span.set_status(trace.Status(
                             trace.StatusCode.ERROR, str(e)))
+                        span.set_attribute("operation.result", "error")
+                        span.set_attribute("error.message", str(e))
                         span.record_exception(e)
                         raise
             return sync_wrapper
