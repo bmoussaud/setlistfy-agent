@@ -356,6 +356,7 @@ module userPortalAccess 'modules/user_portal_role.bicep' = {
 /*
   An AI Foundry resources is a variant of a CognitiveServices/account resource type
   from https://github.com/azure-ai-foundry/foundry-samples/blob/main/samples/microsoft/infrastructure-setup/00-basic/main.bicep
+  
 */
 resource aiFoundry 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
   name: '${rootname}-ai-foundry-${aiFoundryLocation}'
@@ -575,3 +576,6 @@ output MODEL_DEPLOYMENT_NAME string = modelDeploymentsParameters[0].name
 output APPLICATIONINSIGHTS_CONNECTION_STRING string = applicationInsights.outputs.connectionString
 
 output CHAINLIT_AUTH_SECRET string = chainlitAuthSecret
+output AZURE_CLIENT_ID string = containerApplicationIdentity.properties.clientId
+output AZURE_LOG_LEVEL string = 'DEBUG'
+output SETLISTFM_API_KEY string = setlistfmApiKey
