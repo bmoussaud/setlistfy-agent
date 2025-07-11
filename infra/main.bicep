@@ -477,7 +477,7 @@ resource modelDeployments 'Microsoft.CognitiveServices/accounts/deployments@2023
 ]
 
 // Creates the Azure Foundry connection to your Azure App Insights resource
-resource connection 'Microsoft.CognitiveServices/accounts/connections@2025-04-01-preview' = {
+resource connectionAppInsight 'Microsoft.CognitiveServices/accounts/connections@2025-04-01-preview' = {
   name: '${aiFoundry.name}-appinsights-connection'
   parent: aiFoundry
   properties: {
