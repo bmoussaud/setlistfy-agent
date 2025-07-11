@@ -495,6 +495,38 @@ resource connectionAppInsight 'Microsoft.CognitiveServices/accounts/connections@
   }
 }
 
+// Creates the Azure Foundry connection to Bing grounding
+resource connectionBingGrounding 'Microsoft.CognitiveServices/accounts/connections@2025-04-01-preview' = {
+  name: '${aiFoundry.name}-bing-grounding-connection'
+  parent: aiFoundry
+  properties: {
+    category: 'GroundingWithCustomSearch'
+    target: 'https://api.bing.microsoft.com/'
+    authType: 'ApiKey'
+    isSharedToAll: true
+
+    credentials: {
+      key: listKeys(bingSearchService.id, '2020-06-10').key1 // Use the primary key from the Bing Search Service
+      //bingSearchService.outputs.apiKey
+    }
+    metadata: {
+      ApiType: 'Azure'
+      type: 'bing_custom_search'
+      ResourceId: bingSearchService.id
+    }
+  }
+}
+
+//https://github.com/microsoft/semantic-kernel/blob/main/python/samples/concepts/agents/azure_ai_agent/azure_ai_agent_bing_grounding.py
+resource bingSearchService 'Microsoft.Bing/accounts@2020-06-10' = {
+  name: '${rootname}-bing-grounding'
+  location: 'global'
+  sku: {
+    name: 'G2'
+  }
+  kind: 'Bing.GroundingCustomSearch'
+}
+
 module apiManagement 'modules/api-management.bicep' = {
   name: 'api-management'
   params: {
