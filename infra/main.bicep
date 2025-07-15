@@ -21,7 +21,7 @@ param spotifyClientId string
 param spotifyClientSecret string
 
 @description('Indicates if the latest image for the Spotify MCP microservice exists in the ACR.')
-param isLatestImageExist bool = true
+param isLatestImageExist bool = false
 
 var chainlitAuthSecret = 'v.tT0881gp@T9$mRHr4XWs/uk2R8mqI5dSo@R2AO_Rj63t5P$3T,x4aN,Shpo@~'
 
@@ -518,13 +518,51 @@ resource connectionBingGrounding 'Microsoft.CognitiveServices/accounts/connectio
 }
 
 //https://github.com/microsoft/semantic-kernel/blob/main/python/samples/concepts/agents/azure_ai_agent/azure_ai_agent_bing_grounding.py
-resource bingSearchService 'Microsoft.Bing/accounts@2020-06-10' = {
+resource bingSearchService 'Microsoft.Bing/accounts@2025-05-01-preview' = {
   name: '${rootname}-bing-grounding'
   location: 'global'
   sku: {
     name: 'G2'
   }
   kind: 'Bing.GroundingCustomSearch'
+}
+
+//
+resource bingCustomSearchConfiguration 'Microsoft.Bing/accounts/customSearchConfigurations@2025-05-01-preview' = {
+  parent: bingSearchService
+  name: 'defaultConfiguration'
+  properties: {
+    allowedDomains: [
+      {
+        domain: 'www.setlist.fm'
+        //includeSubPages: 'true'
+        //boostLevel: 'Default'
+      }
+      {
+        domain: 'www.infoconcert.com'
+        //boostLevel: 'SuperBoost'
+        //includeSubpages: true (value cannot be true, only false or not set)
+      }
+      {
+        domain: 'www.fnacspectacles.com'
+        //includeSubPages: false
+      }
+      {
+        domain: 'www.concertandco.com'
+        //boostLevel: 'SuperBoost'
+        //includeSubpages: true
+      }
+      {
+        domain: 'www.spotify.com'
+        includeSubPages: false
+      }
+    ]
+    blockedDomains: [
+      {
+        domain: 'www.youtube.com'
+      }
+    ]
+  }
 }
 
 module apiManagement 'modules/api-management.bicep' = {
