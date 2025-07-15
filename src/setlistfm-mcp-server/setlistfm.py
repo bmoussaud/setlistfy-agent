@@ -11,18 +11,12 @@ from dotenv import load_dotenv
 from starlette.responses import JSONResponse
 from starlette.requests import Request
 
-from configuration import configure_telemetry
+from configuration import configure_telemetry, setup_logging
 load_dotenv()
 
-
-logging.basicConfig(level=logging.INFO)
+# Setup logging first
+setup_logging()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-handler = logging.StreamHandler()
-formatter = logging.Formatter(
-    '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
 
 
 def my_span(name: str):

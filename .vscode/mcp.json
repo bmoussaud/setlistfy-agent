@@ -1,12 +1,12 @@
 {
   "servers": {
-    /* "github": {
-      "type": "http",
-      "url": "https://api.githubcopilot.com/mcp/"
-    }, */
+    "azure-rest-api-specs Docs": {
+      "type": "sse",
+      "url": "https://gitmcp.io/Azure/azure-rest-api-specs"
+    },
     "setlistfm": {
       "type": "sse",
-      "url": "http://127.0.0.1:9000/sse/"
+      "url": "http://127.0.0.1:9001/sse"
     },
     "spotify": {
       "type": "sse",

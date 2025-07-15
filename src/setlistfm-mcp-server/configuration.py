@@ -13,14 +13,22 @@ logger = logging.getLogger(__name__)
 
 
 def setup_logging():
-    logging.basicConfig(level=logging.INFO)
+    """Configure logging for the entire application."""
+    # Configure the root logger
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        force=True  # Override any existing configuration
+    )
+
+    # Set specific loggers to appropriate levels
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.error").setLevel(logging.WARNING)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+
+    # Get logger for this module
     logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-    handler = logging.StreamHandler()
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
+    logger.info("Logging configured for SetlistFM MCP Server")
 
 
 class Telemetry(Middleware):
@@ -50,6 +58,7 @@ class Telemetry(Middleware):
                 result = await call_next(context)
                 logger.info(
                     f"Tool call completed: {tool_name}")
+                logger.info(f"Tool call result: {result}")
                 span.set_status(trace.Status(trace.StatusCode.OK))
             except Exception as e:
                 logger.error(

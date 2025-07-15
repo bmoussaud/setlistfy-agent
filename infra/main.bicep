@@ -8,7 +8,7 @@ param environmentName string
 param location string = 'francecentral'
 
 @description('Location for AI Foundry resources.')
-param aiFoundryLocation string = 'swedencentral' //'westus' 'switzerlandnorth'
+param aiFoundryLocation string = 'westus' //'westus' 'switzerlandnorth' swedencentral
 
 @description('Name of the resource group to deploy to.')
 param rootname string = 'mysetlistagent'

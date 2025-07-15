@@ -6,18 +6,12 @@ import json
 import logging
 import os
 
-from configuration import configure_telemetry, Telemetry
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-handler = logging.StreamHandler()
-formatter = logging.Formatter(
-    '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
-
+from configuration import configure_telemetry, Telemetry, setup_logging
 load_dotenv()
+
+# Setup logging first
+setup_logging()
+logger = logging.getLogger(__name__)
 
 
 # Create an HTTP client for your API
