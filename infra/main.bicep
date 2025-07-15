@@ -23,7 +23,7 @@ param spotifyClientSecret string
 @description('Indicates if the latest image for the Spotify MCP microservice exists in the ACR.')
 param isLatestImageExist bool = true
 
-var chainlitAuthSecret = 'u.tT0881gp@T9$mRHr4XWs/uk2R8mqI5dSo@R2AO_Rj63t5P$3T,x4aN,Shpo@~'
+var chainlitAuthSecret = 'v.tT0881gp@T9$mRHr4XWs/uk2R8mqI5dSo@R2AO_Rj63t5P$3T,x4aN,Shpo@~'
 
 // tags that should be applied to all resources.
 var tags = {
