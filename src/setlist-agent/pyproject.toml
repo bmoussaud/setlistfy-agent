@@ -14,7 +14,7 @@ dependencies = [
     "azure-monitor-opentelemetry",
     "azure-ai-projects==1.0.0b12",
     "azure-ai-inference",
-    "azure-ai-agents==1.0.1",
+    "azure-ai-agents==1.1.0b4",
     "aiohttp",
     "azure-identity",
     "opentelemetry-sdk",
