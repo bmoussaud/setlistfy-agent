@@ -20,7 +20,8 @@ dependencies = [
     "azure-core-tracing-opentelemetry",
     "python-dotenv",
     "pydantic",
-    "pydantic-settings"
+    "pydantic-settings",
+    "jsonref",
 ]
 
 [tool.uv]

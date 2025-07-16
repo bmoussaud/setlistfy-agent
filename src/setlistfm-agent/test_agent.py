@@ -63,7 +63,7 @@ async def test_agent():
     finally:
         # Clean up
         print("\nCleaning up...")
-        await agent.shutdown()
+        # await agent.shutdown()
         print("✓ Agent shutdown complete")
 
 

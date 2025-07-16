@@ -14,5 +14,6 @@ dependencies = [
     "opentelemetry-instrumentation-starlette",
     "pytest",
     "pytest-asyncio",
-    "python-dotenv"
+    "python-dotenv",
+    
 ]

@@ -15,6 +15,10 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
 from opentelemetry import trace
 import httpx
+import os
+import jsonref
+from azure.ai.agents.models import OpenApiTool, OpenApiConnectionAuthDetails, OpenApiConnectionSecurityScheme
+
 
 from configuration import settings, validate_required_settings
 
@@ -69,9 +73,6 @@ class SetlistFMAgent:
 
         self.agents_client = self.project_client.agents
 
-        # Find Bing Grounding connection
-        await self._setup_bing_connection()
-
         # Create the agent
         await self._create_agent()
 
@@ -117,28 +118,75 @@ class SetlistFMAgent:
         except Exception as e:
             logger.warning(f"Failed to configure telemetry: {e}")
 
-    async def _setup_bing_connection(self):
+    async def _setup_bing_connection(self) -> BingCustomSearchTool:
         """Find and setup Bing Grounding connection."""
         logger.info("Setting up Bing Grounding connection...")
 
         try:
             logger.info("Listing project connections...")
-            connections = self.project_client.connections.list()
+            bing_connection_id = None
+            connections = self.project_client.connections.list(
+                connection_type="GroundingWithCustomSearch")
             for connection in connections:
-                if connection.type == "GroundingWithCustomSearch":
-                    self.bing_connection_id = connection.id
-                    logger.info(
-                        f"Found Bing connection: {connection.name} (ID: {connection.id})")
-                    break
+                bing_connection_id = connection.id
+                logger.info(
+                    f"Found Bing connection: {connection.name} (ID: {connection.id})")
+                break
 
-            if not self.bing_connection_id:
+            if not bing_connection_id:
                 logger.error("No GroundingWithCustomSearch connection found")
                 raise RuntimeError(
                     "Bing Grounding connection is required but not found")
 
+            return BingCustomSearchTool(
+                connection_id=bing_connection_id,
+                instance_name="defaultConfiguration"
+            )
+
         except Exception as e:
             logger.error(
                 f"Failed to setup Bing connection: {e}", exc_info=True)
+            raise
+
+    async def _setup_api_connection(self) -> OpenApiTool:
+        """Set up API connection for SetlistFM."""
+        logger.info("Setting up SetlistFM API connection...")
+
+        try:
+            # Load OpenAPI specification for SetlistFM
+            with open(os.path.join(os.path.dirname(__file__), "openapi-setlistfm.json"), "r") as f:
+                openapi_setlistfm = jsonref.loads(f.read())
+
+            # Create OpenAPI tool for SetlistFM
+            logger.info("Listing project connections...")
+            connections = self.project_client.connections.list(
+                connection_type="CustomKeys")
+            connection_id = None
+            for connection in connections:
+                logger.info(
+                    f"Checking connection: {connection.type} {connection.name} (ID: {connection.id})")
+
+                if connection.name == "setlistfm-custom-connection":
+                    connection_id = connection.id
+                    logger.info(
+                        f"Found ConnectionType.API_KEY connection: {connection.name} (ID: {connection.id})")
+                    break
+            if not connection_id:
+                logger.error("No ConnectionType.API_KEY connection found")
+                raise RuntimeError(
+                    "ConnectionType.API_KEY connection is required but not found")
+
+            auth = OpenApiConnectionAuthDetails(security_scheme=OpenApiConnectionSecurityScheme(
+                connection_id=connection_id))
+
+            openapi_tool = OpenApiTool(
+                name="setlistfmapi", spec=openapi_setlistfm, description="Retrieve concert information using the setlistfm API", auth=auth
+            )
+            return openapi_tool
+
+        except Exception as e:
+            logger.error(
+                f"Failed to setup SetlistFM API connection: {e}", exc_info=True)
             raise
 
     async def _create_agent(self):
@@ -147,17 +195,19 @@ class SetlistFMAgent:
 
         try:
             # Create Bing Custom Search tool
-            bing_tool = BingCustomSearchTool(
-                connection_id=self.bing_connection_id,
-                instance_name="defaultConfiguration"
-            )
+            bing_tool = await self._setup_bing_connection()
+            api_connection = await self._setup_api_connection()
+            tools = [*bing_tool.definitions, *api_connection.definitions]
+            logger.info(
+                f"Using tools: {len(tools)} tools definition available")
 
             # Create agent with enhanced instructions for setlist management
             agent = self.agents_client.create_agent(
                 model=settings.model_deployment_name,
                 name="setlistfm-agent",
                 instructions=self._get_agent_instructions(),
-                tools=bing_tool.definitions
+                tools=tools,
+                description="Setlist Agent for concert setlists and venue information",
             )
 
             self.agent_id = agent.id
@@ -170,24 +220,25 @@ class SetlistFMAgent:
     def _get_agent_instructions(self) -> str:
         """Get agent instructions for setlist content management."""
         return """
-        You are a specialized SetlistFM Agent that helps users discover and explore concert setlists and music venue information.
-        
+        You are a specialized SetlistFM Agent that helps users discover and explore concert setlists, tracks, and music venue information.
+
         Your primary capabilities include:
-        
+
         1. **Setlist Discovery**: Help users find setlists for specific artists, concerts, or venues
         2. **Venue Information**: Provide details about concert venues, locations, and upcoming events
         3. **Artist Concert History**: Track and analyze an artist's touring patterns and setlist evolution
         4. **Music Content Analysis**: Analyze setlist content, song patterns, and concert trends
         5. **Event Recommendations**: Suggest similar artists, concerts, or venues based on user preferences
-        
+
         When responding to queries:
-        - Use the Bing Grounding tool to search for current venue information, upcoming concerts, and recent setlist data
+        - Use the Tool connected to the SetlistFM API to search for detailed information about setlists, tracks, and venues. This tool provides direct access to the setlist.fm database for accurate and up-to-date concert data.
+        - Use the Bing Grounding tool to search for current venue information, upcoming concerts, and recent setlist data from the web.
         - Provide rich, contextual information about artists, venues, and concerts
         - Cross-reference multiple sources when possible for accuracy
         - Format responses in a clear, organized manner with relevant details
         - Include specific dates, venues, and song information when available
         - Suggest related content that might interest the user
-        
+
         Always strive to be helpful, accurate, and engaging while focusing on music and concert-related content.
         """
 

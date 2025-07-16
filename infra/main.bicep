@@ -553,6 +553,39 @@ resource connectionAppInsight 'Microsoft.CognitiveServices/accounts/connections@
   }
 }
 
+// Creates the Azure Foundry ApiKey connection 
+resource connectionApiKey 'Microsoft.CognitiveServices/accounts/connections@2025-04-01-preview' = {
+  name: 'setlistfm-api-key-connection'
+  parent: aiFoundry
+  properties: {
+    category: 'ApiKey'
+    target: 'https://api.setlist.fm/rest/'
+    authType: 'ApiKey'
+    isSharedToAll: true
+    credentials: {
+      key: setlistfmApiKey
+    }
+    metadata: {}
+  }
+}
+
+resource connectionCustom 'Microsoft.CognitiveServices/accounts/connections@2025-04-01-preview' = {
+  name: 'setlistfm-custom-connection'
+  parent: aiFoundry
+  properties: {
+    category: 'CustomKeys'
+    target: 'https://api.setlist.fm/rest/'
+    authType: 'CustomKeys'
+    isSharedToAll: true
+    credentials: {
+      keys: {
+        'x-api-key': setlistfmApiKey
+      }
+    }
+    metadata: {}
+  }
+}
+
 // Creates the Azure Foundry connection to Bing grounding
 resource connectionBingGrounding 'Microsoft.CognitiveServices/accounts/connections@2025-04-01-preview' = {
   name: '${aiFoundry.name}-bing-grounding-connection'
