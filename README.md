@@ -1,3 +1,18 @@
+# MySetlistAgent
+
+A modular microservice project for music and setlist data management, built with Python 3.11+ and integrating AI Foundry SDK, Setlist.fm, Spotify APIs, and Model Context Protocol (MCP) servers.
+
+## Services
+
+This project consists of four main microservices:
+
+1. **setlist-agent** - Chainlit-based conversational agent using Semantic Kernel and MCP plugins for setlist and music data orchestration
+2. **setlistfm-agent** - AI Foundry SDK agent with Bing Grounding for enhanced setlist content management and intelligent search
+3. **setlistfm-mcp-server** - MCP server providing Setlist.fm API tools and concert data
+4. **spotify-mcp-server** - MCP server providing Spotify API tools for music data and playlists
+
+## Quick Start
+
 ```
 azd env get-value WEATHER_MCP_URL
 ```
@@ -19,6 +34,7 @@ azd env get-value WEATHER_MCP_URL
   (✓) Done: Container App: setlistfm-mcp (17.225s)
   (✓) Done: Container App: weather-mcp (17.21s)
   (✓) Done: Container App: spotify-mcp (33.879s)
+  (✓) Done: Container App: setlistfm-agent (17.3s)
 
 Deploying services (azd deploy)
 
@@ -27,6 +43,9 @@ Deploying services (azd deploy)
 
   (✓) Done: Deploying service spotify_mcp
   - Endpoint: https://spotify-mcp.wittysky-056318b3.francecentral.azurecontainerapps.io/
+
+  (✓) Done: Deploying service setlistfm_agent
+  - Endpoint: https://setlistfm-agent.wittysky-056318b3.francecentral.azurecontainerapps.io/
 ```
 
 1. Update `.vscode/mcp.json` file with output provided

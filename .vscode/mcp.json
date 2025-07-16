@@ -1,26 +1,15 @@
 {
+
   "servers": {
-    "azure-rest-api-specs Docs": {
-      "type": "sse",
-      "url": "https://gitmcp.io/Azure/azure-rest-api-specs"
-    },
     "setlistfm": {
       "type": "sse",
-      "url": "http://127.0.0.1:9001/sse"
+      "url": "https://setlistfm-mcp-server.jollymoss-6fb8520c.francecentral.azurecontainerapps.io/sse",
+      "url_local": "http://localhost:9000/sse",
     },
     "spotify": {
       "type": "sse",
-      //"url": "https://spotify-mcp.agreeablesea-975c6890.francecentral.azurecontainerapps.io/sse",
-      "url": "http://127.0.0.1:9001/sse"
+      "url": "https://spotify-mcp-server.jollymoss-6fb8520c.francecentral.azurecontainerapps.io/sse",
+      "url_local": "http://localhost:9001/sse",
     }
-    /*
-    "spotify2": {
-      "type": "sse",
-      "url": "https://spotify.server.open-mcp.org/latest/mcp"
-    },
-    "my_github": {
-      "type": "sse",
-      "url": "http://localhost:8000/sse"
-    }*/
   }
 }

@@ -7,6 +7,7 @@ This document describes how Application Insights is configured across all three 
 Application Insights provides comprehensive monitoring, logging, and telemetry for the MySetlistAgent microservices:
 
 - **setlist-agent**: Main Chainlit application with Semantic Kernel agent
+- **setlistfm-agent**: AI Foundry SDK agent for setlist content management with Bing Grounding
 - **spotify-mcp-server**: MCP server for Spotify API integration
 - **setlistfm-mcp-server**: MCP server for Setlist.fm API integration
 
@@ -111,6 +112,20 @@ connection_string = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING")
 if connection_string:
     configure_azure_monitor(connection_string=connection_string)
     HTTPXClientInstrumentor().instrument()
+```
+
+#### setlistfm-agent (main.py)
+
+```python
+from azure.monitor.opentelemetry import configure_azure_monitor
+from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+
+connection_string = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING")
+if connection_string:
+    configure_azure_monitor(connection_string=connection_string)
+    HTTPXClientInstrumentor().instrument()
+    FastAPIInstrumentor.instrument_app(app)
 ```
 
 ## What's Monitored

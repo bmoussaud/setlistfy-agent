@@ -283,6 +283,64 @@ module setlistAgentpApp 'modules/mcp-container-app.bicep' = {
   }
 }
 
+module setlistfmAgentApp 'modules/mcp-container-app.bicep' = {
+  name: 'setlistfm-agent'
+  params: {
+    name: 'setlistfm-agent'
+    location: location
+    managedEnvironmentId: containerAppsEnv.id
+    acrLoginServer: acr.properties.loginServer
+    identityId: containerApplicationIdentity.id
+    isLatestImageExist: isLatestImageExist
+    secrets: [
+      {
+        name: 'setlistfm-api-key'
+        keyVaultUrl: secretSetlistFMApiKey.properties.secretUri
+        identity: containerApplicationIdentity.id
+      }
+      {
+        name: 'applicationinsights-connectionstring'
+        keyVaultUrl: secretAppInsightCS.properties.secretUri
+        identity: containerApplicationIdentity.id
+      }
+    ]
+    envVars: [
+      {
+        name: 'PROJECT_ENDPOINT'
+        value: project.properties.endpoints['AI Foundry API']
+      }
+      {
+        name: 'MODEL_DEPLOYMENT_NAME'
+        value: modelDeploymentsParameters[0].name
+      }
+      {
+        name: 'AZURE_CLIENT_ID'
+        value: containerApplicationIdentity.properties.clientId
+      }
+      {
+        name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+        secretRef: 'applicationinsights-connectionstring'
+      }
+      {
+        name: 'SETLISTFM_API_KEY'
+        secretRef: 'setlistfm-api-key'
+      }
+      {
+        name: 'AZURE_LOG_LEVEL'
+        value: 'INFO'
+      }
+      {
+        name: 'AZURE_MONITOR_OPENTELEMETRY_ENABLED'
+        value: 'true'
+      }
+      {
+        name: 'AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED'
+        value: 'true'
+      }
+    ]
+  }
+}
+
 resource containerApplicationIdentityKeyVaultContributorRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
   name: guid(kv.id, containerApplicationIdentity.id, 'Key Vault Contributor Role')
   scope: kv
@@ -632,6 +690,7 @@ output AZURE_CONTAINER_REGISTRY_ENDPOINT string = acr.properties.loginServer
 output SPOTIFY_MCP_URL string = 'https://${spotifyMcpApp.outputs.fqdn}/sse'
 output SETLISTFM_MCP_URL string = 'https://${setlistfmMcpApp.outputs.fqdn}/sse'
 output SETLIST_AGENT_URL string = 'https://${setlistAgentpApp.outputs.fqdn}'
+output SETLISTFM_AGENT_URL string = 'https://${setlistfmAgentApp.outputs.fqdn}'
 
 output AZURE_OPENAI_ENDPOINT string = aiFoundry.properties.customSubDomainName
 output OAUTH_SPOTIFY_CLIENT_ID string = spotifyClientId

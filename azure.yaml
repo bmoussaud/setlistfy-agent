@@ -1,8 +1,9 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
 
 name: my-setlist-agent
-hook:
-  postprovision: ./hooks/gen_mcp_json.sh
+hooks:
+  postprovision:
+    run: ./hooks/gen_mcp_json.sh
 
 services:
   setlistfm-mcp-server:
@@ -11,7 +12,6 @@ services:
     host: containerapp
     docker:
       path: Dockerfile
-      remote: true
 
   spotify-mcp-server:
     project: ./src/spotify-mcp-server
@@ -19,7 +19,6 @@ services:
     host: containerapp
     docker:
       path: Dockerfile
-      remote: true
 
   setlist-agent:
     project: ./src/setlist-agent
@@ -27,4 +26,10 @@ services:
     host: containerapp
     docker:
       path: Dockerfile
-      remote: true
+
+  setlistfm-agent:
+    project: ./src/setlistfm-agent
+    language: python
+    host: containerapp
+    docker:
+      path: Dockerfile

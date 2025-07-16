@@ -1,0 +1,16 @@
+azure-ai-projects==1.0.0b12
+azure-ai-agents==1.1.0b4
+azure-identity
+azure-monitor-opentelemetry
+fastapi
+httpx
+uvicorn
+opentelemetry-sdk
+opentelemetry-instrumentation-requests
+opentelemetry-instrumentation-fastapi
+opentelemetry-instrumentation-httpx
+opentelemetry-instrumentation-asyncio
+azure-core-tracing-opentelemetry
+python-dotenv
+pydantic
+pydantic-settings

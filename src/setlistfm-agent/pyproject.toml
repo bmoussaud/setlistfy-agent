@@ -1,0 +1,34 @@
+[project]
+name = "setlistfm-agent"
+version = "0.1.0"
+description = "AI Foundry SDK agent for setlist content management with Bing Grounding"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "httpx",
+    "uvicorn",
+    "azure-ai-projects==1.0.0b12",
+    "azure-ai-agents==1.1.0b4", 
+    "azure-identity",
+    "azure-monitor-opentelemetry",
+    "opentelemetry-sdk",
+    "opentelemetry-instrumentation-requests",
+    "opentelemetry-instrumentation-fastapi",
+    "opentelemetry-instrumentation-httpx",
+    "opentelemetry-instrumentation-asyncio",
+    "azure-core-tracing-opentelemetry",
+    "python-dotenv",
+    "pydantic",
+    "pydantic-settings"
+]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest",
+    "pytest-asyncio"
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
