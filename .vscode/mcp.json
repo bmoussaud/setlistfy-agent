@@ -3,12 +3,12 @@
   "servers": {
     "setlistfm": {
       "type": "sse",
-      "url": "https://setlistfm-mcp-server.jollymoss-6fb8520c.francecentral.azurecontainerapps.io/sse",
+      "url": "https://setlistfm-mcp-server.whitepebble-a3b480f1.francecentral.azurecontainerapps.io/sse",
       "url_local": "http://localhost:9000/sse",
     },
     "spotify": {
       "type": "sse",
-      "url": "https://spotify-mcp-server.jollymoss-6fb8520c.francecentral.azurecontainerapps.io/sse",
+      "url": "https://spotify-mcp-server.whitepebble-a3b480f1.francecentral.azurecontainerapps.io/sse",
       "url_local": "http://localhost:9001/sse",
     }
   }
