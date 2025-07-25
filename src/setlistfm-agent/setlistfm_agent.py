@@ -6,6 +6,7 @@ import logging
 import os
 from typing import Dict, List, Optional, Any
 from azure.ai.projects import AIProjectClient
+from azure.ai.projects.models import Connection
 from azure.ai.agents.models import BingCustomSearchTool, MessageRole
 from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
 from azure.monitor.opentelemetry import configure_azure_monitor
@@ -34,13 +35,32 @@ if not logger.hasHandlers():
 
 
 class SetlistFMAgent:
+    def _find_connection(self, connection_type: str, connection_name: Optional[str] = None) -> Connection:
+        """Find a connection by type and (optionally) name. If name is None, return the first connection of the given type."""
+        logger.info(f"Searching for connection type '{connection_type}'" + (
+            f" with name '{connection_name}'" if connection_name else " (any name)"))
+        connections = self.project_client.connections.list(
+            connection_type=connection_type)
+        if connection_name:
+            target = next(filter(lambda c: c.name ==
+                          connection_name, connections), None)
+        else:
+            target = next(iter(connections), None)
+        if target:
+            # logger.info(f"target: {target}")
+            logger.info(
+                f"Found connection: {target.type} {target.name} (ID: {target.id})")
+            return target
+        logger.error(f"No connection found for type '{connection_type}'" + (
+            f" and name '{connection_name}'" if connection_name else ""))
+        raise RuntimeError(f"Connection of type '{connection_type}'" + (
+            f" and name '{connection_name}'" if connection_name else "") + " is required but not found")
     """AI Foundry Agent for setlist content management with Bing Grounding."""
 
     def __init__(self):
         self.project_client: Optional[AIProjectClient] = None
         self.agents_client = None
         self.agent_id: Optional[str] = None
-        self.bing_connection_id: Optional[str] = None
         self._initialized = False
 
     async def initialize(self):
@@ -52,9 +72,6 @@ class SetlistFMAgent:
 
         # Validate configuration
         validate_required_settings()
-
-        # Configure telemetry
-        await self._configure_telemetry()
 
         # Set up Azure credentials
         if settings.azure_client_id:
@@ -73,6 +90,9 @@ class SetlistFMAgent:
 
         self.agents_client = self.project_client.agents
 
+        # Configure telemetry
+        await self._configure_telemetry()
+
         # Create the agent
         await self._create_agent()
 
@@ -81,39 +101,39 @@ class SetlistFMAgent:
 
     async def _configure_telemetry(self):
         """Configure Application Insights telemetry."""
+
         if not settings.azure_monitor_enabled:
             logger.info("Azure Monitor telemetry is disabled")
             return
 
         try:
-            if settings.applicationinsights_connection_string:
-                logger.info("Configuring Application Insights...")
+            logger.info("Configuring Application Insights...")
+            connection = self._find_connection("AppInsights")
+            app_insights_connection_string = connection.target
+            logger.info(
+                f"Using Application Insights connection string: {app_insights_connection_string}")
 
-                # Enable content recording for AI interactions
-                if settings.azure_tracing_content_recording:
-                    os.environ["AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED"] = "true"
+            # Enable content recording for AI interactions
+            if settings.azure_tracing_content_recording:
+                os.environ["AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED"] = "true"
 
-                # Configure Azure Monitor
-                configure_azure_monitor(
-                    connection_string=settings.applicationinsights_connection_string,
-                    instrumentation_options={
-                        "azure_sdk": {"enabled": True},
-                        "fastapi": {"enabled": True},
-                        "httpx": {"enabled": True},
-                        "requests": {"enabled": True},
-                        "asyncio": {"enabled": True}
-                    }
-                )
+            # Configure Azure Monitor
+            configure_azure_monitor(
+                connection_string=app_insights_connection_string,
+                instrumentation_options={
+                    "azure_sdk": {"enabled": True},
+                    "fastapi": {"enabled": True},
+                    "httpx": {"enabled": True},
+                    "requests": {"enabled": True},
+                    "asyncio": {"enabled": True}
+                }
+            )
 
-                # Instrument HTTP clients
-                HTTPXClientInstrumentor().instrument()
-                RequestsInstrumentor().instrument()
-                AsyncioInstrumentor().instrument()
-
-                logger.info("Application Insights configured successfully")
-            else:
-                logger.warning(
-                    "No Application Insights connection string provided")
+            # Instrument HTTP clients
+            HTTPXClientInstrumentor().instrument()
+            RequestsInstrumentor().instrument()
+            AsyncioInstrumentor().instrument()
+            logger.info("Application Insights configured successfully")
 
         except Exception as e:
             logger.warning(f"Failed to configure telemetry: {e}")
@@ -121,32 +141,11 @@ class SetlistFMAgent:
     async def _setup_bing_connection(self) -> BingCustomSearchTool:
         """Find and setup Bing Grounding connection."""
         logger.info("Setting up Bing Grounding connection...")
-
-        try:
-            logger.info("Listing project connections...")
-            bing_connection_id = None
-            connections = self.project_client.connections.list(
-                connection_type="GroundingWithCustomSearch")
-            for connection in connections:
-                bing_connection_id = connection.id
-                logger.info(
-                    f"Found Bing connection: {connection.name} (ID: {connection.id})")
-                break
-
-            if not bing_connection_id:
-                logger.error("No GroundingWithCustomSearch connection found")
-                raise RuntimeError(
-                    "Bing Grounding connection is required but not found")
-
-            return BingCustomSearchTool(
-                connection_id=bing_connection_id,
-                instance_name="defaultConfiguration"
-            )
-
-        except Exception as e:
-            logger.error(
-                f"Failed to setup Bing connection: {e}", exc_info=True)
-            raise
+        return BingCustomSearchTool(
+            connection_id=self._find_connection(
+                "GroundingWithCustomSearch").id,
+            instance_name="defaultConfiguration"
+        )
 
     async def _setup_api_connection(self) -> OpenApiTool:
         """Set up API connection for SetlistFM."""
@@ -158,26 +157,9 @@ class SetlistFMAgent:
                 openapi_setlistfm = jsonref.loads(f.read())
 
             # Create OpenAPI tool for SetlistFM
-            logger.info("Listing project connections...")
-            connections = self.project_client.connections.list(
-                connection_type="CustomKeys")
-            connection_id = None
-            for connection in connections:
-                logger.info(
-                    f"Checking connection: {connection.type} {connection.name} (ID: {connection.id})")
-
-                if connection.name == "setlistfm-custom-connection":
-                    connection_id = connection.id
-                    logger.info(
-                        f"Found ConnectionType.API_KEY connection: {connection.name} (ID: {connection.id})")
-                    break
-            if not connection_id:
-                logger.error("No ConnectionType.API_KEY connection found")
-                raise RuntimeError(
-                    "ConnectionType.API_KEY connection is required but not found")
-
             auth = OpenApiConnectionAuthDetails(security_scheme=OpenApiConnectionSecurityScheme(
-                connection_id=connection_id))
+                connection_id=self._find_connection(
+                    "CustomKeys", "setlistfm-custom-connection").id))
 
             openapi_tool = OpenApiTool(
                 name="setlistfmapi", spec=openapi_setlistfm, description="Retrieve concert information using the setlistfm API", auth=auth
