@@ -47,7 +47,7 @@ class SetlistFMAgent:
         else:
             target = next(iter(connections), None)
         if target:
-            # logger.info(f"target: {target}")
+            logger.info(f"target: {target}")
             logger.info(
                 f"Found connection: {target.type} {target.name} (ID: {target.id})")
             return target

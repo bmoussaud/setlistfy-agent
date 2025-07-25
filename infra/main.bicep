@@ -554,7 +554,8 @@ resource connectionAppInsight 'Microsoft.CognitiveServices/accounts/connections@
 }
 
 // Creates the Azure Foundry ApiKey connection 
-resource connectionApiKey 'Microsoft.CognitiveServices/accounts/connections@2025-04-01-preview' = {
+//Not used
+/* resource connectionApiKey 'Microsoft.CognitiveServices/accounts/connections@2025-04-01-preview' = {
   name: 'setlistfm-api-key-connection'
   parent: aiFoundry
   properties: {
@@ -568,7 +569,7 @@ resource connectionApiKey 'Microsoft.CognitiveServices/accounts/connections@2025
     metadata: {}
   }
 }
-
+ */
 resource connectionCustom 'Microsoft.CognitiveServices/accounts/connections@2025-04-01-preview' = {
   name: 'setlistfm-custom-connection'
   parent: aiFoundry
