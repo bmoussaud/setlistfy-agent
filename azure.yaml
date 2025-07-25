@@ -12,6 +12,18 @@ services:
     host: containerapp
     docker:
       path: Dockerfile
+    hooks:
+      prepackage:
+        windows:
+          shell: pwsh
+          run: uv venv;uv sync
+          interactive: false
+          continueOnError: false
+        posix:
+          shell: sh
+          run: uv venv;uv sync
+          interactive: false
+          continueOnError: false
 
   spotify-mcp-server:
     project: ./src/spotify-mcp-server
@@ -19,6 +31,18 @@ services:
     host: containerapp
     docker:
       path: Dockerfile
+    hooks:
+      prepackage:
+        windows:
+          shell: pwsh
+          run: uv venv;uv sync
+          interactive: false
+          continueOnError: false
+        posix:
+          shell: sh
+          run: uv venv;uv sync
+          interactive: false
+          continueOnError: false
 
   setlist-agent:
     project: ./src/setlist-agent
@@ -26,6 +50,18 @@ services:
     host: containerapp
     docker:
       path: Dockerfile
+    hooks:
+      prepackage:
+        windows:
+          shell: pwsh
+          run: uv venv;uv sync --prerelease=allow
+          interactive: false
+          continueOnError: false
+        posix:
+          shell: sh
+          run: uv venv;uv sync --prerelease=allow
+          interactive: false
+          continueOnError: false
 
   setlistfm-agent:
     project: ./src/setlistfm-agent
@@ -33,3 +69,15 @@ services:
     host: containerapp
     docker:
       path: Dockerfile
+    hooks:
+      prepackage:
+        windows:
+          shell: pwsh
+          run: uv venv;uv sync
+          interactive: false
+          continueOnError: false
+        posix:
+          shell: sh
+          run: uv venv;uv sync
+          interactive: false
+          continueOnError: false
