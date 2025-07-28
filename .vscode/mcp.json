@@ -1,15 +1,16 @@
 {
-
+  /*
   "servers": {
     "setlistfm": {
       "type": "sse",
-      "url": "https://setlistfm-mcp-server.whitepebble-a3b480f1.francecentral.azurecontainerapps.io/sse",
+      "url": "https://setlistfm-mcp-server.happyriver-21b9d90f.francecentral.azurecontainerapps.io/sse",
       "url_local": "http://localhost:9000/sse",
     },
     "spotify": {
       "type": "sse",
-      "url": "https://spotify-mcp-server.whitepebble-a3b480f1.francecentral.azurecontainerapps.io/sse",
+      "url": "https://spotify-mcp-server.happyriver-21b9d90f.francecentral.azurecontainerapps.io/sse",
       "url_local": "http://localhost:9001/sse",
     }
   }
+    */
 }

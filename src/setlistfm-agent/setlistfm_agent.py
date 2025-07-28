@@ -143,9 +143,7 @@ class SetlistFMAgent:
         logger.info("Setting up Bing Grounding connection...")
         return BingCustomSearchTool(
             connection_id=self._find_connection(
-                "GroundingWithCustomSearch").id,
-            instance_name="defaultConfiguration"
-        )
+                "GroundingWithCustomSearch").id)
 
     async def _setup_api_connection(self) -> OpenApiTool:
         """Set up API connection for SetlistFM."""

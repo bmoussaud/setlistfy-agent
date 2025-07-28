@@ -5,7 +5,7 @@ param location string
 
 var responseAlertName = 'ResponseTime-${toLower(applicationInsightsName)}'
 
-resource workspace 'Microsoft.OperationalInsights/workspaces@2020-10-01' existing =  {
+resource workspace 'Microsoft.OperationalInsights/workspaces@2020-10-01' existing = {
   name: workspaceName
 }
 
@@ -70,7 +70,6 @@ resource emailActionGroup 'microsoft.insights/actionGroups@2019-06-01' = {
 
 output aiId string = applicationInsights.id
 output aiName string = applicationInsights.name
+output name string = applicationInsights.name
 output connectionString string = applicationInsights.properties.ConnectionString
 output instrumentationKey string = applicationInsights.properties.InstrumentationKey
-
-

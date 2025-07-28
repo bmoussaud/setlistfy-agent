@@ -20,10 +20,14 @@ param spotifyClientId string
 @secure()
 param spotifyClientSecret string
 
+@description('SetlistFM API Key for MCP SetlistFM microservice.')
+@secure()
+param setlistfmApiKey string
+
 @description('Indicates if the latest image for the Spotify MCP microservice exists in the ACR.')
 param isLatestImageExist bool = false
 
-var chainlitAuthSecret = 'v.tT0881gp@T9$mRHr4XWs/uk2R8mqI5dSo@R2AO_Rj63t5P$3T,x4aN,Shpo@~'
+var chainlitAuthSecret = 'v.tT081gp@T9$mRHr4XWs/uk2R8mqI5dSo@R2AO_Rj63t5P$3T,x4aN,Shpo@~'
 
 // tags that should be applied to all resources.
 var tags = {
@@ -227,19 +231,19 @@ module setlistAgentpApp 'modules/mcp-container-app.bicep' = {
     envVars: [
       {
         name: 'AZURE_AI_INFERENCE_API_KEY'
-        value: listKeys(aiFoundry.id, '2025-04-01-preview').key1
+        value: aiFoundry.outputs.aiFoundryInferenceKey
       }
       {
         name: 'AZURE_AI_INFERENCE_ENDPOINT'
-        value: '${aiFoundry.properties.endpoints['Azure AI Model Inference API']}models'
+        value: aiFoundry.outputs.aiFoundryInferenceEndpoint
       }
       {
         name: 'MODEL_DEPLOYMENT_NAME'
-        value: modelDeploymentsParameters[0].name
+        value: aiFoundry.outputs.defaultModelDeploymentName
       }
       {
         name: 'PROJECT_ENDPOINT'
-        value: project.properties.endpoints['AI Foundry API']
+        value: aiFoundry.outputs.aiFoundryEndpoint
       }
 
       {
@@ -307,11 +311,11 @@ module setlistfmAgentApp 'modules/mcp-container-app.bicep' = {
     envVars: [
       {
         name: 'PROJECT_ENDPOINT'
-        value: project.properties.endpoints['AI Foundry API']
+        value: aiFoundryProject.outputs.projectEndpoint
       }
       {
         name: 'MODEL_DEPLOYMENT_NAME'
-        value: modelDeploymentsParameters[0].name
+        value: aiFoundry.outputs.defaultModelDeploymentName
       }
       {
         name: 'AZURE_CLIENT_ID'
@@ -389,10 +393,6 @@ resource secretSpotifyClientSecret 'Microsoft.KeyVault/vaults/secrets@2024-04-01
   }
 }
 
-@description('SetlistFM API Key for MCP SetlistFM microservice.')
-@secure()
-param setlistfmApiKey string
-
 @description('Creates an Azure Key Vault Secret SetListFM API KEY.')
 resource secretSetlistFMApiKey 'Microsoft.KeyVault/vaults/secrets@2024-04-01-preview' = {
   parent: kv
@@ -406,41 +406,30 @@ module userPortalAccess 'modules/user_portal_role.bicep' = {
   name: 'user-portal-access'
   params: {
     kvName: kv.name
-    projectName: aiFoundry.name
+    projectName: aiFoundry.outputs.aiFoundryName
     applicationInsightsName: applicationInsights.outputs.aiName
   }
 }
 
-/*
-  An AI Foundry resources is a variant of a CognitiveServices/account resource type
-  from https://github.com/azure-ai-foundry/foundry-samples/blob/main/samples/microsoft/infrastructure-setup/00-basic/main.bicep
-  
-*/
-resource aiFoundry 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
-  name: '${rootname}-ai-foundry-${aiFoundryLocation}'
-  location: aiFoundryLocation
-  tags: {
-    'azd-service-name': 'ai-foundry'
-    'azd-env-name': environmentName
-  }
-  identity: {
-    type: 'SystemAssigned'
-  }
-  sku: {
-    name: 'S0'
-  }
-  kind: 'AIServices'
-  properties: {
-    // required to work in AI Foundry
-    allowProjectManagement: true
-    // Defines developer API endpoint subdomain
-    customSubDomainName: '${rootname}-ai-foundry-${aiFoundryLocation}'
-    publicNetworkAccess: 'Enabled'
-
-    //disableLocalAuth: true
+module aiFoundry 'modules/ai-foundry.bicep' = {
+  name: 'aiFoundryModel'
+  params: {
+    name: 'foundry-${rootname}-${aiFoundryLocation}-${environmentName}'
+    location: aiFoundryLocation
+    modelDeploymentsParameters: [
+      {
+        name: '${rootname}-gpt-4.1-mini'
+        model: 'gpt-4.1-mini'
+        capacity: 1000
+        deployment: 'GlobalStandard'
+        version: '2025-04-14'
+        format: 'OpenAI'
+      }
+    ]
   }
 }
 
+/*
 resource aiFoundryRoleAssignmentOnContainerApplicationIdentity 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
   name: guid(aiFoundry.id, containerApplicationIdentity.id, 'AI Foundry Azure AI User role')
   scope: aiFoundry
@@ -453,20 +442,27 @@ resource aiFoundryRoleAssignmentOnContainerApplicationIdentity 'Microsoft.Author
     principalId: containerApplicationIdentity.properties.principalId
   }
 }
+*/
 
-resource project 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-preview' = {
-  parent: aiFoundry
-  name: '${rootname}-project-${aiFoundryLocation}'
-  location: aiFoundryLocation
-  properties: {
-    description: 'a world of music'
-    displayName: 'setlist-agent'
-  }
-  identity: {
-    type: 'SystemAssigned'
+module aiFoundryProject 'modules/ai-foundry-project.bicep' = {
+  name: 'aiFoundryProject'
+  params: {
+    location: aiFoundryLocation
+    aiFoundryName: aiFoundry.outputs.aiFoundryName
+    aiProjectName: 'prj-${rootname}-${aiFoundryLocation}-${environmentName}'
+    aiProjectFriendlyName: 'Setlistfy Project ${environmentName}'
+    aiProjectDescription: 'Agents to help to manage setlist and music events.'
+
+    applicationInsightsName: applicationInsights.outputs.name
+    bingSearchServiceName: bingSearch.outputs.bingSearchServiceName
+    customKey: {
+      target: 'https://api.setlist.fm/rest/'
+      authKey: setlistfmApiKey
+    }
   }
 }
 
+/*
 //https://learn.microsoft.com/en-us/azure/ai-foundry/concepts/rbac-azure-ai-foundry?pivots=fdp-project#azure-ai-account-owner
 resource aiFoundryProjectRoleAssignmentOnContainerApplicationIdentity 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
   name: guid(project.id, containerApplicationIdentity.id, 'AI Foundry Project Azure AI User role')
@@ -480,183 +476,15 @@ resource aiFoundryProjectRoleAssignmentOnContainerApplicationIdentity 'Microsoft
     principalId: containerApplicationIdentity.properties.principalId
   }
 }
+*/
 
-@description('Model deployments for OpenAI')
-param modelDeploymentsParameters array = [
-  {
-    name: '${rootname}-gpt-4.1-mini'
-    model: 'gpt-4.1-mini'
-    capacity: 1000
-    deployment: 'GlobalStandard'
-    version: '2025-04-14'
-    format: 'OpenAI'
-  }
-  /*
-  {
-    name: '${rootname}-gpt-4.1-nano'
-    model: 'gpt-4.1-nano'
-    capacity: 1
-    deployment: 'GlobalStandard'
-    version: '2025-04-14'
-    format: 'OpenAI'
-  }
-
-  {
-    name: '${rootname}-phi-4'
-    model: 'Phi-4'
-    version: '7'
-    format: 'Microsoft'
-    capacity: 1
-    deployment: 'GlobalStandard'
-    settings: {
-      enableAutoToolChoice: true
-      toolCallParser: 'default'
-    }
-  }*/
-]
-
-@batchSize(1)
-resource modelDeployments 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01' = [
-  for deployment in modelDeploymentsParameters: {
-    parent: aiFoundry
-    name: deployment.name
-    sku: {
-      capacity: deployment.capacity
-      name: deployment.deployment
-    }
-    properties: {
-      model: {
-        format: deployment.format
-        name: deployment.model
-        version: deployment.version
-      }
-    }
-  }
-]
-
-// Creates the Azure Foundry connection to your Azure App Insights resource
-resource connectionAppInsight 'Microsoft.CognitiveServices/accounts/connections@2025-04-01-preview' = {
-  name: '${aiFoundry.name}-appinsights-connection'
-  parent: aiFoundry
-  properties: {
-    category: 'AppInsights'
-    target: applicationInsights.outputs.aiId
-    authType: 'ApiKey'
-    isSharedToAll: true
-    credentials: {
-      key: applicationInsights.outputs.connectionString
-    }
-    metadata: {
-      ApiType: 'Azure'
-      ResourceId: applicationInsights.outputs.aiId
-    }
+module bingSearch 'modules/bing-search.bicep' = {
+  name: 'bing-search'
+  params: {
+    bingSearchServiceName: 'bing-${rootname}-${environmentName}'
   }
 }
-
-// Creates the Azure Foundry ApiKey connection 
-//Not used
-/* resource connectionApiKey 'Microsoft.CognitiveServices/accounts/connections@2025-04-01-preview' = {
-  name: 'setlistfm-api-key-connection'
-  parent: aiFoundry
-  properties: {
-    category: 'ApiKey'
-    target: 'https://api.setlist.fm/rest/'
-    authType: 'ApiKey'
-    isSharedToAll: true
-    credentials: {
-      key: setlistfmApiKey
-    }
-    metadata: {}
-  }
-}
- */
-resource connectionCustom 'Microsoft.CognitiveServices/accounts/connections@2025-04-01-preview' = {
-  name: 'setlistfm-custom-connection'
-  parent: aiFoundry
-  properties: {
-    category: 'CustomKeys'
-    target: 'https://api.setlist.fm/rest/'
-    authType: 'CustomKeys'
-    isSharedToAll: true
-    credentials: {
-      keys: {
-        'x-api-key': setlistfmApiKey
-      }
-    }
-    metadata: {}
-  }
-}
-
-// Creates the Azure Foundry connection to Bing grounding
-resource connectionBingGrounding 'Microsoft.CognitiveServices/accounts/connections@2025-04-01-preview' = {
-  name: '${aiFoundry.name}-bing-grounding-connection'
-  parent: aiFoundry
-  properties: {
-    category: 'GroundingWithCustomSearch'
-    target: 'https://api.bing.microsoft.com/'
-    authType: 'ApiKey'
-    isSharedToAll: true
-
-    credentials: {
-      key: listKeys(bingSearchService.id, '2020-06-10').key1 // Use the primary key from the Bing Search Service
-      //bingSearchService.outputs.apiKey
-    }
-    metadata: {
-      ApiType: 'Azure'
-      type: 'bing_custom_search'
-      ResourceId: bingSearchService.id
-    }
-  }
-}
-
-//https://github.com/microsoft/semantic-kernel/blob/main/python/samples/concepts/agents/azure_ai_agent/azure_ai_agent_bing_grounding.py
-resource bingSearchService 'Microsoft.Bing/accounts@2025-05-01-preview' = {
-  name: '${rootname}-bing-grounding'
-  location: 'global'
-  sku: {
-    name: 'G2'
-  }
-  kind: 'Bing.GroundingCustomSearch'
-}
-
-//
-resource bingCustomSearchConfiguration 'Microsoft.Bing/accounts/customSearchConfigurations@2025-05-01-preview' = {
-  parent: bingSearchService
-  name: 'defaultConfiguration'
-  properties: {
-    allowedDomains: [
-      {
-        domain: 'www.setlist.fm'
-        //includeSubPages: 'true'
-        //boostLevel: 'Default'
-      }
-      {
-        domain: 'www.infoconcert.com'
-        //boostLevel: 'SuperBoost'
-        //includeSubpages: true (value cannot be true, only false or not set)
-      }
-      {
-        domain: 'www.fnacspectacles.com'
-        //includeSubPages: false
-      }
-      {
-        domain: 'www.concertandco.com'
-        //boostLevel: 'SuperBoost'
-        //includeSubpages: true
-      }
-      {
-        domain: 'www.spotify.com'
-        includeSubPages: false
-      }
-    ]
-    blockedDomains: [
-      {
-        domain: 'www.youtube.com'
-      }
-    ]
-  }
-}
-
+/*
 module apiManagement 'modules/api-management.bicep' = {
   name: 'api-management'
   params: {
@@ -719,6 +547,7 @@ resource keyVaultSecretUserRoleAssignment 'Microsoft.Authorization/roleAssignmen
     principalId: apiManagement.outputs.apiManagementIdentityPrincipalId
   }
 }
+  */
 
 output AZURE_CONTAINER_REGISTRY_ENDPOINT string = acr.properties.loginServer
 output SPOTIFY_MCP_URL string = 'https://${spotifyMcpApp.outputs.fqdn}/sse'
@@ -726,15 +555,15 @@ output SETLISTFM_MCP_URL string = 'https://${setlistfmMcpApp.outputs.fqdn}/sse'
 output SETLIST_AGENT_URL string = 'https://${setlistAgentpApp.outputs.fqdn}'
 output SETLISTFM_AGENT_URL string = 'https://${setlistfmAgentApp.outputs.fqdn}'
 
-output AZURE_OPENAI_ENDPOINT string = aiFoundry.properties.customSubDomainName
+//output AZURE_OPENAI_ENDPOINT string = aiFoundry.properties.customSubDomainName
 output OAUTH_SPOTIFY_CLIENT_ID string = spotifyClientId
 output OAUTH_SPOTIFY_CLIENT_SECRET string = spotifyClientSecret
 output OAUTH_SPOTIFY_SCOPES string = 'user-read-private user-read-email user-library-read user-top-read playlist-read-private playlist-modify-public playlist-modify-private'
 
-output PROJECT_ENDPOINT string = project.properties.endpoints['AI Foundry API']
-output AZURE_AI_INFERENCE_ENDPOINT string = '${aiFoundry.properties.endpoints['Azure AI Model Inference API']}models'
-output AZURE_AI_INFERENCE_API_KEY string = listKeys(aiFoundry.id, '2025-04-01-preview').key1
-output MODEL_DEPLOYMENT_NAME string = modelDeploymentsParameters[0].name
+output PROJECT_ENDPOINT string = aiFoundryProject.outputs.projectEndpoint
+output AZURE_AI_INFERENCE_ENDPOINT string = aiFoundry.outputs.aiFoundryInferenceEndpoint
+output AZURE_AI_INFERENCE_API_KEY string = aiFoundry.outputs.aiFoundryInferenceKey
+output MODEL_DEPLOYMENT_NAME string = aiFoundry.outputs.defaultModelDeploymentName
 
 output APPLICATIONINSIGHTS_CONNECTION_STRING string = applicationInsights.outputs.connectionString
 
