@@ -1,5 +1,5 @@
 {
-  /*
+
   "servers": {
     "setlistfm": {
       "type": "sse",
@@ -12,5 +12,4 @@
       "url_local": "http://localhost:9001/sse",
     }
   }
-    */
 }

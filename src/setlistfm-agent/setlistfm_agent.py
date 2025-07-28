@@ -143,7 +143,7 @@ class SetlistFMAgent:
         logger.info("Setting up Bing Grounding connection...")
         return BingCustomSearchTool(
             connection_id=self._find_connection(
-                "GroundingWithCustomSearch").id)
+                "GroundingWithCustomSearch").id, instance_name="defaultConfiguration")
 
     async def _setup_api_connection(self) -> OpenApiTool:
         """Set up API connection for SetlistFM."""
@@ -210,9 +210,10 @@ class SetlistFMAgent:
         4. **Music Content Analysis**: Analyze setlist content, song patterns, and concert trends
         5. **Event Recommendations**: Suggest similar artists, concerts, or venues based on user preferences
 
-        When responding to queries:
-        - Use the Tool connected to the SetlistFM API to search for detailed information about setlists, tracks, and venues. This tool provides direct access to the setlist.fm database for accurate and up-to-date concert data.
-        - Use the Bing Grounding tool to search for current venue information, upcoming concerts, and recent setlist data from the web.
+        When responding to queries (try to use the following tools in this following order):
+        - Detailed information: Use the Tool connected to the SetlistFM API to search for detailed information about setlists, tracks, and venues. This tool provides direct access to the setlist.fm database for accurate and up-to-date concert data.
+        - Global: Use the Bing Grounding tool to search for current venue information, upcoming concerts, and recent setlist data from the web to provide comprehensive answers and additional context.
+        Global instructions:
         - Provide rich, contextual information about artists, venues, and concerts
         - Cross-reference multiple sources when possible for accuracy
         - Format responses in a clear, organized manner with relevant details
@@ -273,6 +274,11 @@ class SetlistFMAgent:
                 # Get agent response
                 messages = self.agents_client.messages.list(
                     thread_id=thread_id)
+                
+                #logger.info("Messages in thread:")
+                #for msg in messages:
+                #    logger.info(f"message: {msg}")
+     
 
                 # Find the latest assistant message
                 response_content = ""
@@ -295,8 +301,9 @@ class SetlistFMAgent:
                                 "url": annotation.url_citation.url
                             })
 
+                
                 logger.info(
-                    f"Generated response with {len(citations)} citations")
+                    f"Generated response with {len(citations)} citations") if len(citations) > 0 else logger.info("Generated response with no citations")
 
                 return {
                     "thread_id": thread_id,

@@ -12,6 +12,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 
+
+
 async def test_agent():
     """Test the SetlistFM Agent functionality."""
     print("Testing SetlistFM Agent...")
@@ -35,25 +37,41 @@ async def test_agent():
         print(f"  Status: {response['status']}")
         print(f"  Response length: {len(response['response'])} characters")
         print(f"  Citations: {len(response['citations'])} found")
-        print("  Sample response:", response['response'][:100] + "...")
+        print("  Sample response:", response['response'][:500] + "...")
 
         # Test setlist search
         print("\nTesting setlist search...")
-        setlist_response = await agent.search_setlists("Linkin Park")
-        print(f"✓ Setlist search response received:")
-        print(f"  Status: {setlist_response['status']}")
-        print(
-            f"  Response length: {len(setlist_response['response'])} characters")
-        print(f"  Setlists found: {setlist_response}")
+        response = await agent.chat("Find recent setlists for Linkin Park in 2025", thread_id=response['thread_id'])
+        print(f"✓ Chat response received:")
+        print(f"  Thread ID: {response['thread_id']}")
+        print(f"  Status: {response['status']}")
+        print(f"  Response length: {len(response['response'])} characters")
+        print(f"  Citations: {len(response['citations'])} found")
+        print("  Sample response:", response['response'][:500] + "...")
 
-        # Test venue info
-        print("\nTesting venue info...")
-        venue_response = await agent.get_venue_info("Stade de France")
-        print(f"✓ Venue info response received:")
-        print(f"  Status: {venue_response['status']}")
-        print(
-            f"  Response length: {len(venue_response['response'])} characters")
-        print(f"  venue_response: {venue_response}")
+        print("\nTesting setlist searchGrounding")
+        response = await agent.chat("Find recent setlists for Linkin Park setlists in 2025 site:setlist.fm", thread_id=response['thread_id'])
+        print(f"✓ Chat response received:")
+        print(f"  Thread ID: {response['thread_id']}")
+        print(f"  Status: {response['status']}")
+        print(f"  Response length: {len(response['response'])} characters")
+        print(f"  Citations: {len(response['citations'])} found")
+        print("  Sample response:", response['response'][:500] + "...")
+
+
+        # Test furuther setlist search with venue
+        print("\nTesting setlist searchGrounding")
+        response = await agent.chat("When does Linkin Park come back in France in 2026", thread_id=response['thread_id'])
+        print(f"✓ Chat response received:")
+        print(f"  Thread ID: {response['thread_id']}")
+        print(f"  Status: {response['status']}")
+        print(f"  Response length: {len(response['response'])} characters")
+        print(f"  Citations: {len(response['citations'])} found")
+        if len(response['citations'])>0:
+            print("  Citations:")
+            for idx, citation in enumerate(response['citations'], 1):
+                print(f"    [{idx}] {citation}")
+        print("  Sample response:", response['response'][:500] + "...")
 
         print("\n✓ All tests completed successfully!")
 
@@ -63,7 +81,7 @@ async def test_agent():
     finally:
         # Clean up
         print("\nCleaning up...")
-        # await agent.shutdown()
+        await agent.shutdown()
         print("✓ Agent shutdown complete")
 
 
