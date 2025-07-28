@@ -1,0 +1,43 @@
+### Chat: Send a message to the SetlistFM agent
+POST http://localhost:8000/chat
+Content-Type: application/json
+
+{
+  "message": "Hello, can you show me the latest setlist for Iron Maiden?"
+}
+
+###
+
+### Chat: Get chat history for a thread
+GET http://localhost:8000/chat/history/demo-thread-1
+
+###
+
+### Health check
+GET http://localhost:8000/health
+
+###
+
+### Readiness check
+GET http://localhost:8000/ready
+
+###
+
+### Search setlists for an artist
+POST http://localhost:8000/search/setlists
+Content-Type: application/json
+
+{
+  "artist": "Fontaines D.C.",
+  "city": "Aix-les-Bains"
+}
+
+###
+
+### Get venue info
+POST http://localhost:8000/venues/info
+Content-Type: application/json
+
+{
+  "venue_name": "Stade de France"
+}

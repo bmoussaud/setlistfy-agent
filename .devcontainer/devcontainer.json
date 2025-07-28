@@ -43,7 +43,8 @@
         "ms-azuretools.vscode-docker",
         "ms-python.autopep8",
         "teticio.python-envy",
-        "ms-windows-ai-studio.windows-ai-studio"
+        "ms-windows-ai-studio.windows-ai-studio",
+        "humao.rest-client"
       ]
     }
   },

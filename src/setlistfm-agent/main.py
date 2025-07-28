@@ -10,8 +10,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import uvicorn
 
+
 from configuration import settings, validate_required_settings
 from setlistfm_agent import setlistfm_agent
+
+
 
 # Configure logging
 logging.basicConfig(
@@ -19,6 +22,8 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 logger = logging.getLogger("setlistfm_agent.main")
+# Set Azure SDK HTTP logging policy to ERROR
+logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(logging.ERROR)
 
 
 @asynccontextmanager
