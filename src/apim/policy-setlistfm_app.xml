@@ -1,0 +1,46 @@
+<policies>
+    <!-- from https://www.youtube.com/watch?v=s724GgNUt1g-->
+    <!--https://techcommunity.microsoft.com/blog/azurepaasblog/restricting-api-management-access-to-users-through-aad/2116259-->
+    <inbound>
+        <base />
+        <validate-jwt header-name="Authorization" failed-validation-httpcode="401" failed-validation-error-message="Unauthorized" require-expiration-time="true" require-scheme="Bearer" require-signed-tokens="true" clock-skew="0">
+            <!-- be38c437-5790-4e3a-bb56-4811371e35ea is the tenant ID  -->
+            <openid-config url="https://login.microsoftonline.com/be38c437-5790-4e3a-bb56-4811371e35ea/v2.0/.well-known/openid-configuration"/>
+            
+            <audiences>
+                <audience>api://3f5d529d-d685-4d84-bb6b-c3707b3116d9</audience>
+            </audiences>
+            
+            <issuers>
+                <issuer>https://sts.windows.net/be38c437-5790-4e3a-bb56-4811371e35ea/</issuer>
+            </issuers>
+            <required-claims>
+                <claim name="aud" match="any">
+                    <value>api://3f5d529d-d685-4d84-bb6b-c3707b3116d9</value> <!-- apim-resource API identifier -->
+                </claim>
+            </required-claims>
+        </validate-jwt>
+       
+        <set-header name="Authorization" exists-action="override">
+            <value>Bearer {{setlisfm-api-key}}</value>
+        </set-header>
+        <set-header name="x-api-key" exists-action="override">
+            <value>{{setlisfm-api-key}}</value>
+        </set-header>
+        <set-header name="Accept" exists-action="override">
+            <value>application/json</value>
+        </set-header>
+        <set-header name="User-Agent" exists-action="override">
+            <value>setlistfm-mcp/1.0</value>
+        </set-header>
+    </inbound>
+    <backend>
+        <base />
+    </backend>
+    <outbound>
+        <base />
+    </outbound>
+    <on-error>
+        <base />
+    </on-error>
+</policies>

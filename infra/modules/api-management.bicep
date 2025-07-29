@@ -40,7 +40,7 @@ resource apiManagementService 'Microsoft.ApiManagement/service@2023-03-01-previe
 }
 
 resource aiLogger 'Microsoft.ApiManagement/service/loggers@2022-08-01' = {
-  name: 'aiLogger'
+  name: 'apim-logger'
   parent: apiManagementService
   properties: {
     loggerType: 'applicationInsights'

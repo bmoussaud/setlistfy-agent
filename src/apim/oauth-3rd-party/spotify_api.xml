@@ -11,11 +11,13 @@
             <issuer-signing-keys>
                 <key>{jwt_signing_key}</key>
             </issuer-signing-keys>
+            <!--
             <required-claims>
                 <claim name="roles" match="all">
                     <value>{marketing_member_role_id}</value>
                 </claim>
             </required-claims>
+            -->
         </validate-jwt>
 
         <!-- Get OAuth token using Credential Manager -->

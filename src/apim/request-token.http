@@ -1,0 +1,19 @@
+### Request access token from Azure AD
+## client id of the app registration apim-user
+## client secret of the app registration apim-user (secret mysecret)
+## scope is the API identifier of the apim resource API (apim-resource API identifier)
+POST https://login.microsoftonline.com/be38c437-5790-4e3a-bb56-4811371e35ea/oauth2/v2.0/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=client_credentials&client_id=9cfd535a-7dd2-4688-8ff3-6875cba5f6d6&client_secret=<PUT_HERE_CLIENT_SECRET>&scope=api://3f5d529d-d685-4d84-bb6b-c3707b3116d9/.default
+### Get Access to the Setlist.fm API via APIM
+GET https://setlistfyagent-api-management-dev.azure-api.net/setlistfm/1.0/search/artists?artistName=Muse&p=1&sort=sortName HTTP/1.1
+Host: setlistfyagent-api-management-dev.azure-api.net
+Authorization: Bearer <PUT_HERE_ACCESS_TOKEN>
+
+### Request access token from Azure AD
+
+POST https://login.microsoftonline.com/be38c437-5790-4e3a-bb56-4811371e35ea/oauth2/v2.0/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=client_credentials&client_id=57fd923e-3875-4625-bb1b-32c374025111&client_secret<PUT_HERE_CLIENT_SECRET>&scope=api://57fd923e-3875-4625-bb1b-32c374025111/.default
