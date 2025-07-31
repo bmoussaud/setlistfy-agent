@@ -67,6 +67,8 @@ resource apimApi 'Microsoft.ApiManagement/service/apis@2024-06-01-preview' = {
     }
     subscriptionRequired: apiSubscriptionRequired
     type: 'http'
+    format: 'openapi+json'
+    value: contains(api, 'openApiJson') && !empty(api.openApiJson) ? api.openApiJson : null
   }
 }
 
@@ -115,7 +117,7 @@ resource apiSubscription 'Microsoft.ApiManagement/service/subscriptions@2024-05-
     apimApi
   ]
 }
-
+/*
 // https://learn.microsoft.com/azure/templates/microsoft.apimanagement/service/apis/operations
 resource apiOperation 'Microsoft.ApiManagement/service/apis/operations@2024-06-01-preview' = [
   for (op, i) in api.operations: {
@@ -146,6 +148,7 @@ resource apiOperationPolicy 'Microsoft.ApiManagement/service/apis/operations/pol
     }
   }
 ]
+  */
 
 // Create diagnostics only if we have an App Insights ID and instrumentation key.
 // https://learn.microsoft.com/azure/templates/microsoft.apimanagement/service/apis/diagnostics
@@ -192,8 +195,8 @@ resource apiProductAssociation 'Microsoft.ApiManagement/service/products/apis@20
     dependsOn: [
       apimProducts[index] // Ensure the specific product exists and is ready
       apiPolicy // Ensure API policy is applied if present
-      apiOperation // Ensure all operations are created
-      apiOperationPolicy // Ensure all operation policies are applied
+      //apiOperation // Ensure all operations are created
+      //apiOperationPolicy // Ensure all operation policies are applied
       apiDiagnostics // Ensure diagnostics are configured if present
     ]
   }

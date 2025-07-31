@@ -38,6 +38,56 @@ var tags = {
 #disable-next-line no-unused-vars
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
 
+module setlistFmApi 'modules/apim/v1/api.bicep' = {
+  name: 'setlistfm-api'
+  params: {
+    apimName: apiManagement.outputs.name
+    appInsightsId: applicationInsights.outputs.aiId
+    appInsightsInstrumentationKey: applicationInsights.outputs.instrumentationKey
+    api: {
+      name: 'setlistfm'
+      description: 'SetlistFM API'
+      displayName: 'SetlistFM API'
+      path: '/setlistfm'
+      serviceUrl: 'https://api.setlist.fm/rest'
+      subscriptionRequired: true
+      tags: ['setlistfm', 'api', 'music', 'setlist']
+      policyXml: loadTextContent('../src/apim/setlistfm/policy-setlistfm.xml')
+      openApiJson: loadTextContent('../src/apim/setlistfm/openapi-setlistfm.json')
+    }
+  }
+}
+
+module spotifyApi 'modules/apim/v1/api.bicep' = {
+  name: 'spotify-api'
+  params: {
+    apimName: apiManagement.outputs.name
+    appInsightsId: applicationInsights.outputs.aiId
+    appInsightsInstrumentationKey: applicationInsights.outputs.instrumentationKey
+    api: {
+      name: 'spotify'
+      description: 'Spotify API'
+      displayName: 'Spotify API'
+      path: '/spotify'
+      serviceUrl: 'https://api.spotify.com/v1'
+      subscriptionRequired: true
+      tags: ['spotify', 'api', 'music', 'setlist']
+      policyXml: loadTextContent('../src/apim/spotify/policy-spotify.xml')
+      openApiJson: loadYamlContent('../src/apim/spotify/sonallux-spotify-open-api.yml')
+    }
+  }
+}
+
+module oauthSpotify 'modules/api-mgt-oauth.bicep' = {
+  name: 'oauth-spotify'
+  params: {
+    apimName: apiManagement.outputs.name
+    clientId: spotifyClientId
+    clientSecret: spotifyClientSecret
+    scopes: 'user-read-private user-read-email user-library-read user-top-read playlist-read-private playlist-modify-public playlist-modify-private user-follow-read user-follow-modify streaming'
+  }
+}
+
 module applicationInsights 'modules/app-insights.bicep' = {
   name: 'application-insights'
   params: {
@@ -501,6 +551,7 @@ module apiManagement 'modules/api-management.bicep' = {
   ]
 }
 
+/*
 module spotifyAuth 'modules/api-mgt-oauth.bicep' = {
   name: 'spotify-auth'
   params: {
@@ -563,7 +614,7 @@ module spotifyAuth 'modules/api-mgt-oauth.bicep' = {
 output spotifyOAuthRedirectUrl string = spotifyAuth.outputs.spotifyOAuthRedirectUrl
 output apim_name string = spotifyAuth.outputs.apimServiceName
 output apimResourceGatewayURL string = spotifyAuth.outputs.apimResourceGatewayURL
-
+*/
 /*
 module setlistfmapi 'modules/api.bicep' = {
   name: 'setlistfm-api'
@@ -612,6 +663,10 @@ resource keyVaultSecretUserRoleAssignment 'Microsoft.Authorization/roleAssignmen
   }
 }
   */
+
+output spotifyOAuthRedirectUrl string = oauthSpotify.outputs.spotifyOAuthRedirectUrl
+output apim_name string = oauthSpotify.outputs.apimServiceName
+output apimResourceGatewayURL string = oauthSpotify.outputs.apimResourceGatewayURL
 
 output AZURE_CONTAINER_REGISTRY_ENDPOINT string = acr.properties.loginServer
 output SPOTIFY_MCP_URL string = 'https://${spotifyMcpApp.outputs.fqdn}/sse'
