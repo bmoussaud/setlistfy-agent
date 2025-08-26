@@ -8,7 +8,7 @@ param environmentName string
 param location string = 'francecentral'
 
 @description('Location for AI Foundry resources.')
-param aiFoundryLocation string = 'westus' //'westus' 'switzerlandnorth' swedencentral
+param aiFoundryLocation string = 'swedencentral' //'westus' 'switzerlandnorth' swedencentral
 
 @description('Name of the resource group to deploy to.')
 param rootname string = 'mysetlistagent'
@@ -56,6 +56,33 @@ module setlistFmApi 'modules/apim/v1/api.bicep' = {
       openApiJson: loadTextContent('../src/apim/setlistfm/openapi-setlistfm.json')
     }
   }
+}
+@description('This is the built-in Key Vault Secrets Officer role. See https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles/security#key-vault-secrets-user')
+resource keyVaultSecretsUserRoleDefinition 'Microsoft.Authorization/roleDefinitions@2018-01-01-preview' existing = {
+  scope: subscription()
+  name: '4633458b-17de-408a-b874-0445c86b69e6'
+}
+@description('Assigns the API Management service the role to browse and read the keys of the Key Vault to the APIM')
+resource keyVaultSecretUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
+  name: guid(kv.id, apiManagement.name, keyVaultSecretsUserRoleDefinition.id)
+  scope: kv
+  properties: {
+    roleDefinitionId: keyVaultSecretsUserRoleDefinition.id
+    principalId: apiManagement.outputs.apiManagementIdentityPrincipalId
+  }
+}
+
+module setlistFmNvApiKey 'modules/nvkv.bicep' = {
+  name: 'setlisfm-api-key'
+  params: {
+    apimName: apiManagement.outputs.name
+    keyName: 'setlisfm-api-key'
+    keyVaultName: kv.name
+    secretName: secretSetlistFMApiKey.name
+  }
+  dependsOn: [
+    keyVaultSecretUserRoleAssignment //this role assignment is needed to allow the API Management service to access the Key Vault
+  ]
 }
 
 module spotifyApi 'modules/apim/v1/api.bicep' = {

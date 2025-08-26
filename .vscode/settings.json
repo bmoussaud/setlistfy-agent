@@ -5,11 +5,17 @@
     "editor.defaultFormatter": "ms-python.autopep8"
   },
   "git.enableSmartCommit": true,
-  "chat.mcp.discovery.enabled": true,
+  "chat.mcp.discovery.enabled": {
+    "claude-desktop": true,
+    "windsurf": true,
+    "cursor-global": true,
+    "cursor-workspace": true
+  },
   "editor.formatOnSave": true,
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "[bicep]": {
     "editor.defaultFormatter": "ms-azuretools.vscode-bicep"
   },
-  "python-envs.pythonProjects": []
+  "python-envs.pythonProjects": [],
+  "python.terminal.useEnvFile": true
 }
