@@ -6,8 +6,7 @@ authors = ["Benoit Moussaud <your.email@example.com>"]
 requires-python = ">=3.11"
 dependencies = [
     "spotipy",
-    "httpx>=0.28.1",
-    "fastmcp>=2.10.0",
+    "fastmcp",
     "azure-monitor-opentelemetry",
     "opentelemetry-sdk",
     "opentelemetry-instrumentation-httpx",
