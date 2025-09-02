@@ -15,6 +15,7 @@ resource bingCustomSearchConfiguration 'Microsoft.Bing/accounts/customSearchConf
   parent: bingSearchService
   name: 'defaultConfiguration'
   properties: {
+    /*
     allowedDomains: [
       {
         domain: 'www.setlist.fm'
@@ -40,6 +41,7 @@ resource bingCustomSearchConfiguration 'Microsoft.Bing/accounts/customSearchConf
         includeSubPages: false
       }
     ]
+      */
     blockedDomains: [
       {
         domain: 'www.youtube.com'

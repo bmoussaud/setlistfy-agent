@@ -19,7 +19,8 @@ param applicationInsightsName string
 param bingSearchServiceName string
 
 param customKey object = {
-  target: 'https://api.setlist.fm/rest/'
+  name: 'xxxx'
+  target: 'https://api.xxxx.com/'
   authKey: ''
 }
 
@@ -88,7 +89,7 @@ resource connectionBingGrounding 'Microsoft.CognitiveServices/accounts/connectio
 }
 
 resource connectionCustom 'Microsoft.CognitiveServices/accounts/connections@2025-04-01-preview' = {
-  name: 'setlistfm-custom-connection'
+  name: '${customKey.name}-customkey-connection'
   parent: aiFoundry
   properties: {
     category: 'CustomKeys'

@@ -533,8 +533,9 @@ module aiFoundryProject 'modules/ai-foundry-project.bicep' = {
     applicationInsightsName: applicationInsights.outputs.name
     bingSearchServiceName: bingSearch.outputs.bingSearchServiceName
     customKey: {
-      target: 'https://api.setlist.fm/rest/'
-      authKey: setlistfmApiKey
+      name: setlistFmApi.outputs.apiName
+      target: 'https://${apiManagement.outputs.apiManagementProxyHostName}/${setlistFmApi.outputs.apiPath}'
+      authKey: setlistFmApi.outputs.subscriptionPrimaryKey
     }
   }
 }

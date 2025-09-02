@@ -9,13 +9,23 @@
         <base />
       
 
-        <!-- Get OAuth token using Credential Manager -->
-        <get-authorization-context provider-id="spotify" authorization-id="spotify-auth" context-variable-name="auth-context" identity-type="managed" ignore-error="false" />
-        
-        <!-- Set Authorization header with OAuth token -->
-        <set-header name="Authorization" exists-action="override">
-            <value>@("Bearer " + ((Authorization)context.Variables.GetValueOrDefault("auth-context"))?.AccessToken)</value>
-        </set-header>
+        <!-- Use client-supplied X-Spotify-Token header if present, otherwise fall back to Credential Manager -->
+        <choose>
+            <when condition='@(!string.IsNullOrEmpty(context.Request.Headers.GetValueOrDefault("X-Spotify-Token")))'>
+                <set-header name="Authorization" exists-action="override">
+                    <value>@("Bearer " + context.Request.Headers.GetValueOrDefault("X-Spotify-Token"))</value>
+                </set-header>
+            </when>
+            <otherwise>
+                <!-- Get OAuth token using Credential Manager -->
+                <get-authorization-context provider-id="spotify" authorization-id="spotify-auth" context-variable-name="auth-context" identity-type="managed" ignore-error="false" />
+                
+                <!-- Set Authorization header with OAuth token -->
+                <set-header name="Authorization" exists-action="override">
+                    <value>@("Bearer " + ((Authorization)context.Variables.GetValueOrDefault("auth-context"))?.AccessToken)</value>
+                </set-header>
+            </otherwise>
+        </choose>
         
         <!-- Set backend service to Spotify API -->
         <set-backend-service base-url="https://api.spotify.com/v1" />
