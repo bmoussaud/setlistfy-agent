@@ -2,6 +2,7 @@
 SetlistFM Agent using AI Foundry SDK with Bing Grounding
 """
 import asyncio
+import json
 import logging
 import os
 from typing import Dict, List, Optional, Any
@@ -145,20 +146,23 @@ class SetlistFMAgent:
             connection_id=self._find_connection(
                 "GroundingWithCustomSearch").id, instance_name="defaultConfiguration")
 
-    async def _setup_api_connection(self) -> OpenApiTool:
+    async def _setup_setlistfm_api_connection(self) -> OpenApiTool:
         """Set up API connection for SetlistFM."""
         logger.info("Setting up SetlistFM API connection...")
 
         try:
             # Load OpenAPI specification for SetlistFM
             with open(os.path.join(os.path.dirname(__file__), "openapi-setlistfm.json"), "r") as f:
-                openapi_setlistfm = jsonref.loads(f.read())
+                openapi_setlistfm = json.loads(f.read())
 
+            connection = self._find_connection(
+                "CustomKeys", "setlistfm-customkey-connection")
+            openapi_setlistfm['servers'][0]['url'] = connection.target
+            logger.info(
+                f"**** Server URL: {openapi_setlistfm['servers'][0]['url']}")
             # Create OpenAPI tool for SetlistFM
             auth = OpenApiConnectionAuthDetails(security_scheme=OpenApiConnectionSecurityScheme(
-                connection_id=self._find_connection(
-                    "CustomKeys", "setlistfm-custom-connection").id))
-
+                connection_id=connection.id))
             openapi_tool = OpenApiTool(
                 name="setlistfmapi", spec=openapi_setlistfm, description="Retrieve concert information using the setlistfm API", auth=auth
             )
@@ -176,7 +180,7 @@ class SetlistFMAgent:
         try:
             # Create Bing Custom Search tool
             bing_tool = await self._setup_bing_connection()
-            api_connection = await self._setup_api_connection()
+            api_connection = await self._setup_setlistfm_api_connection()
             tools = [*bing_tool.definitions, *api_connection.definitions]
             logger.info(
                 f"Using tools: {len(tools)} tools definition available")
@@ -274,34 +278,29 @@ class SetlistFMAgent:
                 # Get agent response
                 messages = self.agents_client.messages.list(
                     thread_id=thread_id)
-                
-                #logger.info("Messages in thread:")
-                #for msg in messages:
+
+                # logger.info("Messages in thread:")
+                # for msg in messages:
                 #    logger.info(f"message: {msg}")
-     
 
                 # Find the latest assistant message
                 response_content = ""
                 citations = []
 
                 for msg in messages:
+                    # logger.info(f"message: {msg}")
                     if msg.role == "assistant":
                         if msg.text_messages:
                             for text_msg in msg.text_messages:
                                 response_content = text_msg.text.value
                                 break
+                            for annotation in msg.url_citation_annotations:
+                                citations.append({
+                                    "title": annotation.url_citation.title,
+                                    "url": annotation.url_citation.url
+                                })
                         break
 
-                # Collect citations if available
-                for msg in messages:
-                    if msg.role == "assistant":
-                        for annotation in msg.url_citation_annotations:
-                            citations.append({
-                                "title": annotation.url_citation.title,
-                                "url": annotation.url_citation.url
-                            })
-
-                
                 logger.info(
                     f"Generated response with {len(citations)} citations") if len(citations) > 0 else logger.info("Generated response with no citations")
 

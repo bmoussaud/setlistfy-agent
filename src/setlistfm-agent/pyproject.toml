@@ -6,10 +6,11 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi",
+    "fastmcp",
     "httpx",
     "uvicorn",
-    "azure-ai-projects==1.0.0b12",
-    "azure-ai-agents==1.1.0b4", 
+    "azure-ai-projects",
+    "azure-ai-agents", 
     "azure-identity",
     "azure-monitor-opentelemetry",
     "opentelemetry-sdk",

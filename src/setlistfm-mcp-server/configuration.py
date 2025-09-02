@@ -89,7 +89,7 @@ def configure_telemetry():
         logger.info("Application Insights configured for SetlistFM MCP Server")
     except Exception as e:
         logger.warning(
-            f"Failed to configure Application Insights (configure_azure_monitor): {e}", exc_info=True)
+            f"Failed to configure Application Insights (configure_azure_monitor) using CS [{connection_string}]: {e}", exc_info=True)
 
     # Instrument HTTP clients
     try:

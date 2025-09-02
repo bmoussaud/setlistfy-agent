@@ -20,6 +20,8 @@ from semantic_kernel.contents.chat_history import ChatHistory
 from semantic_kernel.agents import ChatCompletionAgent, ChatHistoryAgentThread
 from semantic_kernel.connectors.ai.azure_ai_inference import AzureAIInferenceChatCompletion
 from semantic_kernel.connectors.mcp import MCPSsePlugin
+from semantic_kernel.connectors.mcp import MCPStreamableHttpPlugin
+
 from semantic_kernel.functions import KernelArguments
 
 from spotify_auth import SpotifyAuthManager, spotify_auth
@@ -186,7 +188,7 @@ class EnhancedSetlistAgent:
             raise ValueError(
                 "SETLISTFM_MCP_URL must be set in environment variables.")
         try:
-            self.plugin_setlistfm = MCPSsePlugin(
+            self.plugin_setlistfm = MCPStreamableHttpPlugin(
                 name="setlistfm_mcp_client",
                 description="Setlist FM Plugin for concert and setlist data",
                 url=setlistfm_mcp_url

@@ -13,4 +13,4 @@ RUN uv sync --frozen --no-cache
 EXPOSE 80
 
 # Run the application.
-CMD ["/app/.venv/bin/fastmcp", "run", "/app/setlistfm2.py", "--port", "80", "--host", "0.0.0.0","--transport","sse","--log-level","debug"]
+CMD ["/app/.venv/bin/fastmcp", "run", "/app/setlistfm2.py", "--port", "80", "--host", "0.0.0.0","--transport","sse"]

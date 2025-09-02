@@ -12,6 +12,30 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 
+def dump_info(obj, indent=0):
+    """Recursively print all information from dicts/lists/objects.
+
+    This is a generic dump utility used by the tests to print the full
+    contents of the agent response for debugging and validation.
+    """
+    prefix = " " * indent
+    # Protect against very large / deeply nested structures
+    try:
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                if isinstance(v, (dict, list)):
+                    print(f"{prefix}{k}:")
+                    dump_info(v, indent + 2)
+                else:
+                    print(f"{prefix}{k}: {v}")
+        elif isinstance(obj, list):
+            for i, item in enumerate(obj):
+                print(f"{prefix}[{i}]:")
+                dump_info(item, indent + 2)
+        else:
+            print(f"{prefix}{obj}")
+    except Exception as e:
+        print(f"{prefix}<error dumping object: {e}>")
 
 
 async def test_agent():
@@ -29,49 +53,24 @@ async def test_agent():
 
         # Test chat functionality
         print("\nTesting chat functionality...")
-        test_message = "Tell me about recent concerts by Linkin Park"
-
-        response = await agent.chat(test_message)
+        response = await agent.chat("Tell me what do you know about Linkin Park")
         print(f"✓ Chat response received:")
-        print(f"  Thread ID: {response['thread_id']}")
-        print(f"  Status: {response['status']}")
-        print(f"  Response length: {len(response['response'])} characters")
-        print(f"  Citations: {len(response['citations'])} found")
-        print("  Sample response:", response['response'][:500] + "...")
+        dump_info(response)
+        print("---------------------------------------------------------------------")
 
         # Test setlist search
         print("\nTesting setlist search...")
         response = await agent.chat("Find recent setlists for Linkin Park in 2025", thread_id=response['thread_id'])
         print(f"✓ Chat response received:")
-        print(f"  Thread ID: {response['thread_id']}")
-        print(f"  Status: {response['status']}")
-        print(f"  Response length: {len(response['response'])} characters")
-        print(f"  Citations: {len(response['citations'])} found")
-        print("  Sample response:", response['response'][:500] + "...")
-
-        print("\nTesting setlist searchGrounding")
-        response = await agent.chat("Find recent setlists for Linkin Park setlists in 2025 site:setlist.fm", thread_id=response['thread_id'])
-        print(f"✓ Chat response received:")
-        print(f"  Thread ID: {response['thread_id']}")
-        print(f"  Status: {response['status']}")
-        print(f"  Response length: {len(response['response'])} characters")
-        print(f"  Citations: {len(response['citations'])} found")
-        print("  Sample response:", response['response'][:500] + "...")
-
+        dump_info(response)
+        print("---------------------------------------------------------------------")
 
         # Test furuther setlist search with venue
         print("\nTesting setlist searchGrounding")
         response = await agent.chat("When does Linkin Park come back in France in 2026", thread_id=response['thread_id'])
         print(f"✓ Chat response received:")
-        print(f"  Thread ID: {response['thread_id']}")
-        print(f"  Status: {response['status']}")
-        print(f"  Response length: {len(response['response'])} characters")
-        print(f"  Citations: {len(response['citations'])} found")
-        if len(response['citations'])>0:
-            print("  Citations:")
-            for idx, citation in enumerate(response['citations'], 1):
-                print(f"    [{idx}] {citation}")
-        print("  Sample response:", response['response'][:500] + "...")
+        dump_info(response)
+        print("---------------------------------------------------------------------")
 
         print("\n✓ All tests completed successfully!")
 

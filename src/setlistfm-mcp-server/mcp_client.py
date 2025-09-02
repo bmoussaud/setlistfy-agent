@@ -22,11 +22,12 @@ API_URL = os.getenv(
 
 
 API_URL = "https://api.githubcopilot.com/mcp/"
+API_URL = "https://setlistfyagent-api-management-dev.azure-api.net/setlistfm-mcp/mcp"
 
 
 async def test_list_tools():
     """Test the MCP root endpoint for FastMCP server."""
-    async with Client(API_URL, auth="oauth") as client:
+    async with Client(API_URL) as client:
         tools = await client.list_tools()
         assert isinstance(tools, list), "Expected tools to be a list"
         # logging.info("Available tools: %s", tools)
@@ -44,13 +45,14 @@ async def test_call_tool():
     async with Client(API_URL) as client:
         tool_name = "getArtist"
         tool_name = "returnsAnArtistForAGivenMusicbrainzMbid"
+        tool_name = "searchForArtists"
         logger.info(f"Calling tool: {tool_name}")
-        response = await client.call_tool(tool_name, {"mbid": "b10bbbfc-cf9e-42e0-be17-e2c3e1d2600d"})
+        response = await client.call_tool(tool_name, {"artistName": "Coldplay", "p": "1", "sort": "relevance"})
         assert response, "Response should not be empty"
         logging.info(f"Response: {response}")
-        for item in response:
+        for item in response.content or []:
             logging.info(f"Item: {item.text}")
 
 if __name__ == "__main__":
     asyncio.run(test_list_tools())
-    # asyncio.run(test_call_tool())
+    asyncio.run(test_call_tool())

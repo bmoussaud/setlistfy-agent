@@ -1,19 +1,15 @@
 {
-	"servers": {
-		"setlistfm": {
-			"type": "http",
-			"url": "https://setlistfm-mcp-server.whiteforest-7f5675f3.francecentral.azurecontainerapps.io/sse",
-			"url_local": "http://localhost:9000/sse"
-		},
-		"spotify": {
-			"type": "http",
-			"url": "https://spotify-mcp-server.whiteforest-7f5675f3.francecentral.azurecontainerapps.io/sse",
-			"url_local": "http://localhost:9001/sse"
-		},
-		"my-mcp-server-87064bac": {
-			"url": "https://api.githubcopilot.com/mcp/",
-			"type": "http"
-		}
-	},
-	"inputs": []
+
+  "servers": {
+    "setlistfm": {
+      "type": "sse",
+      "url": "https://setlistfm-mcp-server.whiteforest-7f5675f3.francecentral.azurecontainerapps.io/sse",
+      "url_local": "http://localhost:9000/sse",
+    },
+    "spotify": {
+      "type": "sse",
+      "url": "https://spotify-mcp-server.whiteforest-7f5675f3.francecentral.azurecontainerapps.io/sse",
+      "url_local": "http://localhost:9001/sse",
+    }
+  }
 }
