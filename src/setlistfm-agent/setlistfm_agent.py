@@ -4,10 +4,11 @@ SetlistFM Agent using AI Foundry SDK with Bing Grounding
 import asyncio
 import json
 import logging
+from multiprocessing import connection
 import os
 from typing import Dict, List, Optional, Any
 from azure.ai.projects import AIProjectClient
-from azure.ai.projects.models import Connection
+from azure.ai.projects.models import Connection, ApiKeyCredentials
 from azure.ai.agents.models import BingCustomSearchTool, MessageRole
 from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
 from azure.monitor.opentelemetry import configure_azure_monitor
@@ -36,7 +37,8 @@ if not logger.hasHandlers():
 
 
 class SetlistFMAgent:
-    def _find_connection(self, connection_type: str, connection_name: Optional[str] = None) -> Connection:
+
+    def _find_connection(self, connection_type: str, connection_name: Optional[str] = None, with_credentials: Optional[bool] = False) -> Connection:
         """Find a connection by type and (optionally) name. If name is None, return the first connection of the given type."""
         logger.info(f"Searching for connection type '{connection_type}'" + (
             f" with name '{connection_name}'" if connection_name else " (any name)"))
@@ -51,12 +53,17 @@ class SetlistFMAgent:
             logger.info(f"target: {target}")
             logger.info(
                 f"Found connection: {target.type} {target.name} (ID: {target.id})")
-            return target
+            if with_credentials:
+                # trick to get credentials app_insights_connection_string = self.project_client.telemetry.get_connection_string()
+                return self.project_client.connections._get_with_credentials(  # pylint: disable=protected-access
+                    name=target.name
+                )
+            else:
+                return target
         logger.error(f"No connection found for type '{connection_type}'" + (
             f" and name '{connection_name}'" if connection_name else ""))
         raise RuntimeError(f"Connection of type '{connection_type}'" + (
             f" and name '{connection_name}'" if connection_name else "") + " is required but not found")
-    """AI Foundry Agent for setlist content management with Bing Grounding."""
 
     def __init__(self):
         self.project_client: Optional[AIProjectClient] = None
@@ -109,10 +116,25 @@ class SetlistFMAgent:
 
         try:
             logger.info("Configuring Application Insights...")
-            connection = self._find_connection("AppInsights")
-            app_insights_connection_string = connection.target
+            connection = self._find_connection(
+                "AppInsights", with_credentials=True)
+            logger.info(f"AppInsights connection: {connection}")
+
+            from typing import cast
+            from azure.ai.projects.models import ApiKeyCredentials
+            if isinstance(connection.credentials, ApiKeyCredentials):
+                logger.info("connection.credentials is ApiKeyCredentials")
+            else:
+                raise RuntimeError(
+                    "connection.credentials is not ApiKeyCredentials")
+            app_insights_connection_string = cast(
+                ApiKeyCredentials, connection.credentials).api_key
             logger.info(
                 f"Using Application Insights connection string: {app_insights_connection_string}")
+
+            if app_insights_connection_string is None:
+                raise ValueError(
+                    "Application Insights connection string is missing in connection credentials")
 
             # Enable content recording for AI interactions
             if settings.azure_tracing_content_recording:
@@ -121,23 +143,19 @@ class SetlistFMAgent:
             # Configure Azure Monitor
             configure_azure_monitor(
                 connection_string=app_insights_connection_string,
-                instrumentation_options={
-                    "azure_sdk": {"enabled": True},
-                    "fastapi": {"enabled": True},
-                    "httpx": {"enabled": True},
-                    "requests": {"enabled": True},
-                    "asyncio": {"enabled": True}
-                }
             )
 
             # Instrument HTTP clients
-            HTTPXClientInstrumentor().instrument()
-            RequestsInstrumentor().instrument()
-            AsyncioInstrumentor().instrument()
+            # HTTPXClientInstrumentor().instrument()
+            # RequestsInstrumentor().instrument()
+            # AsyncioInstrumentor().instrument()
             logger.info("Application Insights configured successfully")
 
         except Exception as e:
-            logger.warning(f"Failed to configure telemetry: {e}")
+            logger.warning(
+                f"Failed to configure telemetry: {e}", exc_info=True)
+            import sys
+            sys.exit(1)
 
     async def _setup_bing_connection(self) -> BingCustomSearchTool:
         """Find and setup Bing Grounding connection."""
