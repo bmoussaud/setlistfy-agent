@@ -188,7 +188,7 @@ class EnhancedSetlistAgent:
             raise ValueError(
                 "SETLISTFM_MCP_URL must be set in environment variables.")
         try:
-            self.plugin_setlistfm = MCPStreamableHttpPlugin(
+            self.plugin_setlistfm = MCPSsePlugin(
                 name="setlistfm_mcp_client",
                 description="Setlist FM Plugin for concert and setlist data",
                 url=setlistfm_mcp_url
