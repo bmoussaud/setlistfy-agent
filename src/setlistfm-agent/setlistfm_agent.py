@@ -69,21 +69,7 @@ class SetlistFMAgent:
             f" and name '{connection_name}'" if connection_name else "") + " is required but not found")
 
     def __init__(self):
-        self.project_client: Optional[AIProjectClient] = None
-        self.agents_client: Optional[AgentsClient] = None
-        self.agent_id: Optional[str] = None
-        self._initialized = False
-
-    async def initialize(self):
-        """Initialize the agent with Azure AI Foundry."""
-        if self._initialized:
-            return
-
-        logger.info("Initializing SetlistFM Agent...")
-
-        # Validate configuration
         validate_required_settings()
-
         # Set up Azure credentials
         if settings.azure_client_id:
             credential = ManagedIdentityCredential(
@@ -98,19 +84,28 @@ class SetlistFMAgent:
             endpoint=settings.project_endpoint,
             credential=credential
         )
-
         self.agents_client = self.project_client.agents
 
-        # Configure telemetry
-        await self._configure_telemetry()
+        self._configure_telemetry()
 
         # Create the agent
-        await self._create_agent()
+        bing_tool = self._setup_bing_connection()
+        api_connection = self._setup_setlistfm_api_connection()
+        tools = [*bing_tool.definitions, *api_connection.definitions]
+        logger.info(f"Using tools: {len(tools)} tools definition available")
 
-        self._initialized = True
-        logger.info("SetlistFM Agent initialized successfully")
+        self._agent = self.project_client.agents.create_agent(
+            model=settings.model_deployment_name,
+            name="setlistfm-agent",
+            instructions=self._get_agent_instructions(),
+            tools=tools,
+            description="Setlist Agent for concert setlists and venue information",
+        )
 
-    async def _configure_telemetry(self):
+        self._agent_id = self._agent.id
+        logger.info(f"Created agent with ID: {self._agent_id}")
+
+    def _configure_telemetry(self):
         """Configure Application Insights telemetry."""
 
         if not settings.azure_monitor_enabled:
@@ -165,14 +160,14 @@ class SetlistFMAgent:
             import sys
             sys.exit(1)
 
-    async def _setup_bing_connection(self) -> BingCustomSearchTool:
+    def _setup_bing_connection(self) -> BingCustomSearchTool:
         """Find and setup Bing Grounding connection."""
         logger.info("Setting up Bing Grounding connection...")
         return BingCustomSearchTool(
             connection_id=self._find_connection(
                 "GroundingWithCustomSearch").id, instance_name="defaultConfiguration")
 
-    async def _setup_setlistfm_api_connection(self) -> OpenApiTool:
+    def _setup_setlistfm_api_connection(self) -> OpenApiTool:
         """Set up API connection for SetlistFM."""
         logger.info("Setting up SetlistFM API connection...")
 
@@ -185,7 +180,7 @@ class SetlistFMAgent:
                 "CustomKeys", "setlistfm-customkey-connection")
             openapi_setlistfm['servers'][0]['url'] = connection.target
             logger.info(
-                f"**** Server URL: {openapi_setlistfm['servers'][0]['url']}")
+                f"SetListFM Server URL: {openapi_setlistfm['servers'][0]['url']}")
             # Create OpenAPI tool for SetlistFM
             auth = OpenApiConnectionAuthDetails(security_scheme=OpenApiConnectionSecurityScheme(
                 connection_id=connection.id))
@@ -197,34 +192,6 @@ class SetlistFMAgent:
         except Exception as e:
             logger.error(
                 f"Failed to setup SetlistFM API connection: {e}", exc_info=True)
-            raise
-
-    async def _create_agent(self):
-        """Create the AI agent with Bing Grounding tool."""
-        logger.info("Creating AI agent with Bing Grounding...")
-
-        try:
-            # Create Bing Custom Search tool
-            bing_tool = await self._setup_bing_connection()
-            api_connection = await self._setup_setlistfm_api_connection()
-            tools = [*bing_tool.definitions, *api_connection.definitions]
-            logger.info(
-                f"Using tools: {len(tools)} tools definition available")
-
-            # Create agent with enhanced instructions for setlist management
-            agent = self.agents_client.create_agent(
-                model=settings.model_deployment_name,
-                name="setlistfm-agent",
-                instructions=self._get_agent_instructions(),
-                tools=tools,
-                description="Setlist Agent for concert setlists and venue information",
-            )
-
-            self.agent_id = agent.id
-            logger.info(f"Created agent with ID: {self.agent_id}")
-
-        except Exception as e:
-            logger.error(f"Failed to create agent: {e}", exc_info=True)
             raise
 
     def _get_agent_instructions(self) -> str:
@@ -255,9 +222,6 @@ class SetlistFMAgent:
 
     async def chat(self, message: str, thread_id: Optional[str] = None) -> Dict[str, Any]:
         """Process a chat message and return agent response."""
-        if not self._initialized:
-            await self.initialize()
-
         tracer = trace.get_tracer(__name__)
 
         with tracer.start_as_current_span("setlistfm_agent_chat") as span:
@@ -268,25 +232,25 @@ class SetlistFMAgent:
 
                 # Create or use existing thread
                 if thread_id:
-                    thread = self.agents_client.threads.get(
+                    thread = self.project_client.agents.threads.get(
                         thread_id=thread_id)
                 else:
-                    thread = self.agents_client.threads.create()
+                    thread = self.project_client.agents.threads.create()
                     thread_id = thread.id
 
                 span.set_attribute("thread_id", thread_id)
 
                 # Add user message to thread
-                user_message = self.agents_client.messages.create(
+                user_message = self.project_client.agents.messages.create(
                     thread_id=thread_id,
                     role="user",
                     content=message
                 )
 
                 # Create and process agent run
-                run = self.agents_client.runs.create_and_process(
+                run = self.project_client.agents.runs.create_and_process(
                     thread_id=thread_id,
-                    agent_id=self.agent_id
+                    agent_id=self._agent_id
                 )
 
                 span.set_attribute("run_status", run.status)
@@ -302,7 +266,7 @@ class SetlistFMAgent:
                     }
 
                 # Get agent response
-                messages = self.agents_client.messages.list(
+                messages = self.project_client.agents.messages.list(
                     thread_id=thread_id)
 
                 # logger.info("Messages in thread:")
@@ -350,11 +314,10 @@ class SetlistFMAgent:
 
     async def get_thread_history(self, thread_id: str) -> List[Dict[str, Any]]:
         """Get chat history for a specific thread."""
-        if not self._initialized:
-            await self.initialize()
 
         try:
-            messages = self.agents_client.messages.list(thread_id=thread_id)
+            messages = self.project_client.agents.messages.list(
+                thread_id=thread_id)
 
             history = []
             for msg in messages:
@@ -400,20 +363,14 @@ class SetlistFMAgent:
 
         try:
             # Delete the agent
-            if self.agent_id and self.agents_client:
-                self.agents_client.delete_agent(self.agent_id)
-                logger.info(f"Deleted agent: {self.agent_id}")
+            if self._agent_id:
+                self.project_client.agents.delete_agent(self._agent_id)
+                logger.info(f"Deleted agent: {self._agent_id}")
 
             # Close project client
             if self.project_client:
                 self.project_client.close()
-
-            self._initialized = False
             logger.info("SetlistFM Agent shutdown complete")
 
         except Exception as e:
             logger.error(f"Error during shutdown: {e}")
-
-
-# Global agent instance
-setlistfm_agent = SetlistFMAgent()

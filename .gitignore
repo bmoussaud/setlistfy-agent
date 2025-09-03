@@ -22,3 +22,5 @@ src/github-auth-mcp-server
 .vscode/claude.json
 .cache
 .chainlit
+src/setlistfm-agent/runcurl.sh
+src/setlistfm-agent/result.json

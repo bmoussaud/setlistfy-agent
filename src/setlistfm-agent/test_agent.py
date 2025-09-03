@@ -47,9 +47,6 @@ async def test_agent():
 
     try:
         # Initialize the agent
-        print("Initializing agent...")
-        await agent.initialize()
-        print("✓ Agent initialized successfully")
 
         # Test chat functionality
         print("\nTesting chat functionality...")
@@ -71,6 +68,39 @@ async def test_agent():
         print(f"✓ Chat response received:")
         dump_info(response)
         print("---------------------------------------------------------------------")
+
+        print("\n✓ All tests completed successfully!")
+
+    except Exception as e:
+        print(f"✗ Test failed: {e}")
+        raise
+    finally:
+        # Clean up
+        print("\nCleaning up...")
+        await agent.shutdown()
+        print("✓ Agent shutdown complete")
+
+
+async def test_agent_2():
+    """Test the SetlistFM Agent functionality."""
+    print("Testing SetlistFM Agent...")
+
+    # Create agent instance
+    agent = SetlistFMAgent()
+
+    try:
+        # Initialize the agent
+
+        # Test chat functionality
+        print("\nTesting chat functionality...")
+        response = await agent.chat("Donne moi l'actualite de Wolf Alice en France (Dernier Album Sorti, Prochain Concert ?)")
+        print(f"✓ Chat response received:")
+        dump_info(response)
+        print("---------------------------------------------------------------------")
+
+        response = await agent.chat("Quelle sera la setlist probable de Wolf Alice lors du concert de paris ?", thread_id=response['thread_id'])
+        print(f"✓ Chat response received:")
+        dump_info(response)
 
         print("\n✓ All tests completed successfully!")
 
@@ -120,7 +150,7 @@ if __name__ == "__main__":
 
     # Run the test
     try:
-        asyncio.run(test_agent())
+        asyncio.run(test_agent_2())
         print("\n🎉 All tests passed!")
     except Exception as e:
         print(f"\n💥 Test failed: {e}")
