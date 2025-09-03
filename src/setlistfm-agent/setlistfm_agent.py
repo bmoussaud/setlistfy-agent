@@ -8,19 +8,22 @@ from multiprocessing import connection
 import os
 from typing import Dict, List, Optional, Any
 from azure.ai.projects import AIProjectClient
+from azure.ai.agents import AgentsClient
 from azure.ai.projects.models import Connection, ApiKeyCredentials
 from azure.ai.agents.models import BingCustomSearchTool, MessageRole
+from azure.ai.agents.models import OpenApiTool, OpenApiConnectionAuthDetails, OpenApiConnectionSecurityScheme
 from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
 from azure.monitor.opentelemetry import configure_azure_monitor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
+from opentelemetry.instrumentation.openai_v2 import OpenAIInstrumentor
+from typing import cast
 from opentelemetry import trace
 import httpx
 import os
 import jsonref
-from azure.ai.agents.models import OpenApiTool, OpenApiConnectionAuthDetails, OpenApiConnectionSecurityScheme
 
 
 from configuration import settings, validate_required_settings
@@ -67,7 +70,7 @@ class SetlistFMAgent:
 
     def __init__(self):
         self.project_client: Optional[AIProjectClient] = None
-        self.agents_client = None
+        self.agents_client: Optional[AgentsClient] = None
         self.agent_id: Optional[str] = None
         self._initialized = False
 
@@ -120,11 +123,7 @@ class SetlistFMAgent:
                 "AppInsights", with_credentials=True)
             logger.info(f"AppInsights connection: {connection}")
 
-            from typing import cast
-            from azure.ai.projects.models import ApiKeyCredentials
-            if isinstance(connection.credentials, ApiKeyCredentials):
-                logger.info("connection.credentials is ApiKeyCredentials")
-            else:
+            if not isinstance(connection.credentials, ApiKeyCredentials):
                 raise RuntimeError(
                     "connection.credentials is not ApiKeyCredentials")
             app_insights_connection_string = cast(
@@ -143,12 +142,21 @@ class SetlistFMAgent:
             # Configure Azure Monitor
             configure_azure_monitor(
                 connection_string=app_insights_connection_string,
+                instrumentation_options={
+                    "azure_sdk": {"enabled": True},
+                    "fastapi": {"enabled": True},
+                    "httpx": {"enabled": True},
+                    "requests": {"enabled": True},
+                    "asyncio": {"enabled": True}
+                }
             )
 
             # Instrument HTTP clients
             # HTTPXClientInstrumentor().instrument()
             # RequestsInstrumentor().instrument()
             # AsyncioInstrumentor().instrument()
+
+            OpenAIInstrumentor().instrument()
             logger.info("Application Insights configured successfully")
 
         except Exception as e:
