@@ -11,6 +11,7 @@ WORKDIR /app
 RUN uv sync --frozen --no-cache
 
 EXPOSE 80
+ENV FASTMCP_EXPERIMENTAL_ENABLE_NEW_OPENAPI_PARSER=true
 
 # Run the application.
-CMD ["/app/.venv/bin/fastmcp", "run", "/app/setlistfm2.py", "--port", "80", "--host", "0.0.0.0","--transport","sse"]
+CMD ["/app/.venv/bin/fastmcp", "run", "/app/setlistfm2.py", "--port", "80", "--host", "0.0.0.0","--transport","http"]

@@ -188,7 +188,7 @@ class EnhancedSetlistAgent:
             raise ValueError(
                 "SETLISTFM_MCP_URL must be set in environment variables.")
         try:
-            self.plugin_setlistfm = MCPSsePlugin(
+            self.plugin_setlistfm = MCPStreamableHttpPlugin(
                 name="setlistfm_mcp_client",
                 description="Setlist FM Plugin for concert and setlist data",
                 url=setlistfm_mcp_url
@@ -220,7 +220,7 @@ class EnhancedSetlistAgent:
         logger.info(
             f"Connecting to Spotify MCP at {spotify_mcp_url} with headers: {headers}")
 
-        self.plugin_spotify = MCPSsePlugin(
+        self.plugin_spotify = MCPStreamableHttpPlugin(
             name="spotify_mcp_client",
             description="Spotify Plugin with OAuth support",
             url=spotify_mcp_url,

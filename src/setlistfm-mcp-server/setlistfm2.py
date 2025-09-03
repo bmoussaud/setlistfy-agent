@@ -12,6 +12,10 @@ load_dotenv()
 # Setup logging first
 setup_logging()
 logger = logging.getLogger(__name__)
+logging.getLogger("azure.monitor.opentelemetry.exporter").setLevel(
+    logging.WARNING)
+logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(
+    logging.WARNING)
 
 
 # Create an HTTP client for your API
@@ -58,7 +62,7 @@ if __name__ == "__main__":
         "log_config": None,  # Use default logging configuration
     }
     mcp.run(
-        transport="sse",
+        transport="http",
         host="127.0.0.1",
         port=9001,
         log_level="debug",

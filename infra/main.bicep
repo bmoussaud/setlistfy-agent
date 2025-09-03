@@ -697,8 +697,9 @@ output apim_name string = oauthSpotify.outputs.apimServiceName
 output apimResourceGatewayURL string = oauthSpotify.outputs.apimResourceGatewayURL
 
 output AZURE_CONTAINER_REGISTRY_ENDPOINT string = acr.properties.loginServer
-output SPOTIFY_MCP_URL string = 'https://${spotifyMcpApp.outputs.fqdn}/sse'
-output SETLISTFM_MCP_URL string = 'https://${setlistfmMcpApp.outputs.fqdn}/sse'
+output SPOTIFY_MCP_URL string = 'https://${spotifyMcpApp.outputs.fqdn}/mcp'
+output SETLISTFM_MCP_URL string = 'https://${setlistfmMcpApp.outputs.fqdn}/mcp'
+
 output SETLIST_AGENT_URL string = 'https://${setlistAgentpApp.outputs.fqdn}'
 output SETLISTFM_AGENT_URL string = 'https://${setlistfmAgentApp.outputs.fqdn}'
 
