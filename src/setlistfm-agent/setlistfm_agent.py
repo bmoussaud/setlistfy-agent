@@ -124,7 +124,7 @@ class SetlistFMAgent:
             app_insights_connection_string = cast(
                 ApiKeyCredentials, connection.credentials).api_key
             logger.info(
-                f"Using Application Insights connection string: {app_insights_connection_string}")
+                "Using Application Insights connection string (value redacted for security)")
 
             if app_insights_connection_string is None:
                 raise ValueError(
