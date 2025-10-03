@@ -15,6 +15,11 @@ async def main():
             print(f"🔧 Available tools ({len(tools)}):")
             for tool in tools:
                 print(f"   - {tool.name}: {tool.description}")
+
+            greet = await client.call_tool(
+                "greet", arguments={'name': 'Benoit'}
+            )
+            print(f"🤖 GPT-4-Turbo says: {greet.content[0].text}")
     except Exception as e:
         print(f"❌ Authentication failed: {e}")
         raise
