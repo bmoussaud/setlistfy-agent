@@ -125,7 +125,7 @@ auth = SpotifyProvider(
     # Your registered app credentials
     client_id="1c3e47d871fe46c1bdc787e487233019",
     client_secret="490e086df740497b90d36362ffa18ec2",
-    base_url="http://localhost:8000",
+    base_url="http://localhost:9001", #must match the FastMCP server URL
     redirect_path="/auth/callback",
     #required_scopes=["user-read-email", "playlist-read-private"],
     required_scopes=["user-read-private", "user-top-read", "user-read-email", "user-library-read", "user-top-read", "playlist-read-private", "playlist-modify-public", "playlist-modify-private", "user-follow-read", "user-follow-modify", "streaming"],
@@ -136,7 +136,7 @@ auth = SpotifyProvider(
 settings.experimental.enable_new_openapi_parser = True
 #https://github.com/jlowin/fastmcp/issues/1627#issuecomment-3221502592
 
-mcp = FastMCP(name="My Spotify MCP Server", auth=auth)  
+#mcp = FastMCP(name="My Spotify MCP Server", auth=auth)  
 #load local file src/spotify-mcp-server/sonallux-spotify-open-api.yml  YAML file as a dict 
 openapi_path = Path(__file__).parent / "sonallux-spotify-open-api.yml"
 

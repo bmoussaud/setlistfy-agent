@@ -2,13 +2,11 @@
   "servers": {
     "setlistfm": {
       "type": "sse",
-      "url": "https://setlistfm-mcp-server.whiteforest-7f5675f3.francecentral.azurecontainerapps.io/sse",
-      "url_local": "http://localhost:9000/sse"
+      "url": "https://setlistfm-mcp-server.whiteforest-7f5675f3.francecentral.azurecontainerapps.io/sse"
     },
     "spotify": {
       "type": "http",
-      "url": "http://localhost:8000/mcp",
-      "url_local": "http://localhost:9001/sse"
+      "url": "http://localhost:9001/mcp"
     }
   }
 }

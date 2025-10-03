@@ -1,17 +1,22 @@
 import asyncio
+from pathlib import Path
 
 from fastmcp.client import Client
 
-SERVER_URL = "http://127.0.0.1:8000/mcp"
+SERVER_URL = "http://localhost:9001/mcp"
 
-from fastmcp.client.auth.oauth import FileTokenStorage
+from fastmcp.client.auth import OAuth
 
-storage = FileTokenStorage(server_url=SERVER_URL)
+oauth = OAuth(mcp_url=SERVER_URL,token_storage_cache_dir=Path("/tmp/.spotify-mcp-token"), scopes=["user-top-read"])
+
+#from fastmcp.client.auth.oauth import FileTokenStorage
+#storage = FileTokenStorage(server_url=SERVER_URL)
 #storage.clear()
 
 async def main():
     try:
-        async with Client(SERVER_URL, auth="oauth") as client:
+        async with Client(SERVER_URL, auth=oauth) as client:
+            print("🔑 Authenticating with Spotify...")
             assert await client.ping()
             print("✅ Successfully authenticated!")
 
