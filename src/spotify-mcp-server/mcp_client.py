@@ -19,7 +19,9 @@ async def main():
             print("🔑 Authenticating with Spotify...")
             assert await client.ping()
             print("✅ Successfully authenticated!")
-
+            tools = await client.list_tools()
+            for tool in tools:
+                print(f"🛠️ Available tool: {tool}")
             greet = await client.call_tool(
                 "get_users_top_artists",raise_on_error=True
             )
