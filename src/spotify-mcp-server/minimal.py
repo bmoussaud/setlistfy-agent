@@ -1,6 +1,6 @@
 import logging
-from fastmcp import FastMCP
-from fastmcp import FastMCP
+import os
+from fastmcp import FastMCP,settings
 from fastmcp.server.auth import OAuthProxy
 from fastmcp.server.dependencies import get_access_token
 # from fastmcp.server.auth.providers.jwt import JWTVerifier
@@ -24,6 +24,8 @@ from fastmcp.server.auth.auth import AccessToken
 from fastmcp.server.auth.oauth_proxy import OAuthProxy
 from fastmcp.utilities.logging import get_logger
 from fastmcp.utilities.types import NotSet, NotSetT
+import yaml
+from pathlib import Path
 
 logger = get_logger(__name__)
 
@@ -125,11 +127,27 @@ auth = SpotifyProvider(
     client_secret="490e086df740497b90d36362ffa18ec2",
     base_url="http://localhost:8000",
     redirect_path="/auth/callback",
-    required_scopes=["user-read-email", "playlist-read-private"],
+    #required_scopes=["user-read-email", "playlist-read-private"],
+    required_scopes=["user-read-private", "user-top-read", "user-read-email", "user-library-read", "user-top-read", "playlist-read-private", "playlist-modify-public", "playlist-modify-private", "user-follow-read", "user-follow-modify", "streaming"],
     timeout_seconds=10,
 )
 
+#https://github.com/jlowin/fastmcp/issues/1627#issuecomment-3221502592
+settings.experimental.enable_new_openapi_parser = True
+#https://github.com/jlowin/fastmcp/issues/1627#issuecomment-3221502592
+
 mcp = FastMCP(name="My Spotify MCP Server", auth=auth)  
+#load local file src/spotify-mcp-server/sonallux-spotify-open-api.yml  YAML file as a dict 
+openapi_path = Path(__file__).parent / "sonallux-spotify-open-api.yml"
+
+with open(openapi_path, "r", encoding="utf-8") as f:
+    local_spec = yaml.safe_load(f)
+
+# Load remote spec YAML file as a dict
+
+mcp = FastMCP.from_openapi(openapi_spec=local_spec, 
+                           client=httpx.AsyncClient(base_url="https://api.spotify.com/v1"), 
+                           auth=auth)
 
 @mcp.tool(description="Greet a person with their name")
 def greet(name: str) -> str:
@@ -137,6 +155,11 @@ def greet(name: str) -> str:
     token = get_access_token()
     
     return f"Hello, {name} you have the following token {token.token} type {type(token)} "
+
+@mcp.tool(description="Get information about the authenticated Spotify user")
+async def get_token_info() -> dict:
+    token = get_access_token()
+    return { "token": token.token, "client_id": token.client_id, "scopes": token.scopes, "claims": token.claims }
 
 
 
