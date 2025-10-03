@@ -137,32 +137,22 @@ auth = SpotifyProvider(
 settings.experimental.enable_new_openapi_parser = True
 #https://github.com/jlowin/fastmcp/issues/1627#issuecomment-3221502592
 
-#mcp = FastMCP(name="My Spotify MCP Server", auth=auth)  
+
 #load local file src/spotify-mcp-server/sonallux-spotify-open-api.yml  YAML file as a dict 
 openapi_path = Path(__file__).parent / "sonallux-spotify-open-api.yml"
-
 with open(openapi_path, "r", encoding="utf-8") as f:
     local_spec = yaml.safe_load(f)
-
-# Load remote spec YAML file as a dict
 
 mcp = FastMCP.from_openapi(openapi_spec=local_spec, 
                            client=httpx.AsyncClient(base_url="https://api.spotify.com/v1"), 
                            auth=auth)
 
-@mcp.tool(description="Greet a person with their name")
-def greet(name: str) -> str:
-    
-    token = get_access_token()
-    
-    return f"Hello, {name} you have the following token {token.token} type {type(token)} "
 
-@mcp.tool(description="Get information about the authenticated Spotify user")
+
+@mcp.tool(description="DEBUG ONLY Get information about the authenticated Spotify user")
 async def get_token_info() -> dict:
     token = get_access_token()
     return { "token": token.token, "client_id": token.client_id, "scopes": token.scopes, "claims": token.claims }
-
-
 
 if __name__ == "__main__":
     mcp.run(transport="http", port=MCP_SERVER_PORT, host=MCP_SERVER_HOST)  # Run the MCP server on port 9001
