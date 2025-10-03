@@ -15,7 +15,8 @@ fastmcp_logger.setLevel(logging.DEBUG)
 uvicorn_logger = logging.getLogger("uvicorn")
 uvicorn_logger.setLevel(logging.DEBUG)
 
-
+MCP_SERVER_PORT = int(os.getenv("MCP_SERVER_PORT", "9001"))
+MCP_SERVER_HOST = os.getenv("MCP_SERVER_HOST", "localhost")
 
 # SpotifyProvider for managing Spotify OAuth authentication
 import httpx
@@ -122,10 +123,10 @@ class SpotifyProvider(OAuthProxy):
         )
 
 auth = SpotifyProvider(
-    # Your registered app credentials
-    client_id="1c3e47d871fe46c1bdc787e487233019",
-    client_secret="490e086df740497b90d36362ffa18ec2",
-    base_url="http://localhost:9001", #must match the FastMCP server URL
+    # Your registered app credentials (TODO manage env vars)
+    client_id=os.getenv("SPOTIFY_CLIENT_ID", "1c3e47d871fe46c1bdc787e487233019"),
+    client_secret=os.getenv("SPOTIFY_CLIENT_SECRET", "490e086df740497b90d36362ffa18ec2"),
+    base_url=f"http://{MCP_SERVER_HOST}:{MCP_SERVER_PORT}", #must match the FastMCP server URL
     redirect_path="/auth/callback",
     #required_scopes=["user-read-email", "playlist-read-private"],
     required_scopes=["user-read-private", "user-top-read", "user-read-email", "user-library-read", "user-top-read", "playlist-read-private", "playlist-modify-public", "playlist-modify-private", "user-follow-read", "user-follow-modify", "streaming"],
@@ -163,5 +164,5 @@ async def get_token_info() -> dict:
 
 
 
-
-
+if __name__ == "__main__":
+    mcp.run(transport="http", port=MCP_SERVER_PORT, host=MCP_SERVER_HOST)  # Run the MCP server on port 9001
